@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fort Lauderdale Bulk Pickup Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; width: 100%; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; flex-direction: column; }
+        #header { background: #1e40af; color: white; padding: 16px; }
+        #header h1 { font-size: 24px; margin-bottom: 4px; }
+        #header p { font-size: 14px; opacity: 0.9; }
+        #main { flex: 1; display: flex; overflow: hidden; position: relative; }
+        #map { flex: 1; }
+        #sidebar { width: 400px; background: white; border-left: 1px solid #e5e7eb; padding: 24px; overflow-y: auto; display: none; position: absolute; right: 0; top: 0; bottom: 0; z-index: 2000; box-shadow: -2px 0 8px rgba(0,0,0,0.1); }
+        #sidebar.active { display: block; }
+        .close-btn { float: right; background: none; border: none; font-size: 24px; cursor: pointer; color: #9ca3af; }
+        .close-btn:hover { color: #4b5563; }
+        .zone-title { font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 16px; clear: both; }
+        .info-card { background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .info-card h3 { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+        .info-card p { font-size: 16px; color: #1f2937; font-weight: 500; }
+        .next-pickup { background: #d1fae5; border-left: 4px solid #10b981; }
+        .schedule { background: #dbeafe; border-left: 4px solid #3b82f6; }
+        .btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; font-size: 14px; }
+        .btn-calendar { background: #10b981; color: white; }
+        .btn-calendar:hover { background: #059669; }
+        .btn-directions { background: #8b5cf6; color: white; }
+        .btn-directions:hover { background: #7c3aed; }
+        .guidelines { background: #f9fafb; border-radius: 8px; padding: 16px; margin-top: 16px; }
+        .guidelines h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+        .guidelines ul { list-style: none; padding: 0; }
+        .guidelines li { font-size: 13px; color: #4b5563; margin-bottom: 4px; padding-left: 16px; position: relative; }
+        .guidelines li:before { content: "•"; position: absolute; left: 0; }
+        .legend { position: absolute; bottom: 20px; left: 20px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; max-height: 80vh; overflow-y: auto; }
+        .legend h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11px; }
+        .legend-color { width: 16px; height: 16px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.2); flex-shrink: 0; }
+        .leaflet-container { background: #a8d5e2; }
+        @media (max-width: 768px) { #sidebar { width: 100%; } }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🗑️ Fort Lauderdale Bulk Pickup Map</h1>
+        <p>Click on any colored zone to view pickup schedule and next collection date</p>
+    </div>
+    <div id="main">
+        <div id="map"></div>
+        <div id="sidebar">
+            <button class="close-btn" onclick="closeSidebar()">×</button>
+            <div id="sidebar-content"></div>
+        </div>
+        <div class="legend">
+            <h3>Pickup Schedules</h3>
+            <div id="legend-content"></div>
+        </div>
+    </div>
+    <script>
+var colorMap = {
+    '1st Monday': '#e74c3c', '1st Tuesday': '#e67e22', '1st Wednesday': '#f39c12', '1st Thursday': '#f1c40f', '1st Friday': '#9b59b6',
+    '2nd Monday': '#1abc9c', '2nd Tuesday': '#16a085', '2nd Wednesday': '#27ae60', '2nd Thursday': '#2ecc71', '2nd Friday': '#3498db',
+    '3rd Monday': '#f39c12', '3rd Tuesday': '#d35400', '3rd Wednesday': '#c0392b', '3rd Thursday': '#e91e63', '3rd Friday': '#9c27b0',
+    '4th Monday': '#673ab7', '4th Tuesday': '#3f51b5', '4th Wednesday': '#2196f3', '4th Thursday': '#00bcd4', '4th Friday': '#009688'
+};
+
+function getNextPickupDate(bulkday) {
+    var parts = bulkday.split(' ');
+    var weekNum = {'1st': 1, '2nd': 2, '3rd': 3, '4th': 4}[parts[0]];
+    var dayName = parts[1];
+    var daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    var targetDayIndex = daysOfWeek.indexOf(dayName);
+    var now = new Date();
+    var currentMonth = now.getMonth();
+    var currentYear = now.getFullYear();
+    
+    function getNthWeekday(year, month, dayOfWeek, n) {
+        var firstDay = new Date(year, month, 1);
+        var firstDayOfWeek = firstDay.getDay();
+        var daysUntilTarget = (dayOfWeek - firstDayOfWeek + 7) % 7;
+        var occurrence = 1 + daysUntilTarget + (n - 1) * 7;
+        return new Date(year, month, occurrence);
+    }
+    
+    var targetDate = getNthWeekday(currentYear, currentMonth, targetDayIndex, weekNum);
+    if (targetDate < now) {
+        currentMonth++;
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        targetDate = getNthWeekday(currentYear, currentMonth, targetDayIndex, weekNum);
+    }
+    return targetDate;
+}
+
+function formatDate(date) {
+    return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function addToCalendar(bulkday, dateStr) {
+    var pickupDate = new Date(dateStr);
+    var formatICS = function(d) { return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; };
+    var start = new Date(pickupDate);
+    var end = new Date(pickupDate);
+    end.setHours(23, 59, 59);
+    var ics = 'BEGIN:VCALENDAR\\nVERSION:2.0\\nBEGIN:VEVENT\\nUID:' + Date.now() + '@bulk\\nDTSTART:' + formatICS(start) + '\\nDTEND:' + formatICS(end) + '\\nSUMMARY:Bulk Pickup - ' + bulkday + '\\nDESCRIPTION:Fort Lauderdale bulk pickup\\nEND:VEVENT\\nEND:VCALENDAR';
+    var blob = new Blob([ics], {type: 'text/calendar'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'bulk-pickup.ics';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function getPolygonCenter(coords) {
+    if (coords[0][0] && Array.isArray(coords[0][0][0])) coords = coords[0];
+    var lat = 0, lng = 0, count = 0;
+    for (var i = 0; i < coords.length; i++) {
+        if (Array.isArray(coords[i]) && coords[i].length >= 2) {
+            lng += coords[i][0]; lat += coords[i][1]; count++;
+        }
+    }
+    return [lat / count, lng / count];
+}
+
+function getDirections(coords) {
+    var center = getPolygonCenter(coords);
+    window.open('https://www.google.com/maps/dir/?api=1&destination=' + center[0] + ',' + center[1], '_blank');
+}
+
+function showZoneDetails(feature) {
+    var props = feature.properties;
+    var bulkday = props.BULKDAY;
+    var nextDate = getNextPickupDate(bulkday);
+    var html = '<div class="zone-title">' + bulkday + ' Pickup Zone</div>';
+    html += '<div class="info-card schedule"><h3>📅 Pickup Schedule</h3><p>' + bulkday + ' of each month</p></div>';
+    html += '<div class="info-card next-pickup"><h3>🗓️ Next Pickup</h3><p>' + formatDate(nextDate) + '</p></div>';
+    html += '<button class="btn btn-calendar" onclick="addToCalendar(\\'+ bulkday + '\\', \\'' + nextDate.toISOString() + '\\')">📆 Add to Calendar</button>';
+    html += '<button class="btn btn-directions" onclick="getDirections(' + JSON.stringify(feature.geometry.coordinates) + ')">🧭 Get Directions</button>';
+    html += '<div class="guidelines"><h3>📋 Guidelines</h3><ul>';
+    html += '<li>Place items curbside before 7 AM</li><li>Collection 7 AM - 7 PM</li>';
+    html += '<li>No hazardous materials</li><li>No construction debris</li></ul>';
+    html += '<p style="margin-top:12px;font-size:13px;color:#6b7280"><strong>Contact:</strong> ' + props.CONTACT + '<br><strong>Phone:</strong> ' + props.PHONE + '</p></div>';
+    document.getElementById('sidebar-content').innerHTML = html;
+    document.getElementById('sidebar').classList.add('active');
+}
+
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('active');
+}
+
+window.addEventListener('load', function() {
+    console.log('Initializing map...');
+    var map = L.map('map').setView([26.1224, -80.1373], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19
+    }).addTo(map);
+    
+    console.log('Loading zones from GeoJSON...');
+    fetch('bulk-map-fortlauderdale.geojson')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            console.log('Loaded ' + data.features.length + ' zones');
+            var legendContent = document.getElementById('legend-content');
+            var schedules = {};
+            
+            for (var i = 0; i < data.features.length; i++) {
+                var feature = data.features[i];
+                var bulkday = feature.properties.BULKDAY;
+                var color = colorMap[bulkday] || '#95a5a6';
+                schedules[bulkday] = color;
+                
+                var coords = [];
+                for (var j = 0; j < feature.geometry.coordinates[0].length; j++) {
+                    var c = feature.geometry.coordinates[0][j];
+                    coords.push([c[1], c[0]]);
+                }
+                
+                var polygon = L.polygon(coords, {
+                    color: color, fillColor: color, fillOpacity: 0.4, weight: 2
+                }).addTo(map);
+                
+                polygon.bindTooltip(bulkday, { permanent: false, direction: 'center' });
+                
+                (function(f) {
+                    polygon.on('click', function() { showZoneDetails(f); });
+                })(feature);
+                
+                polygon.on('mouseover', function() { this.setStyle({ fillOpacity: 0.7, weight: 3 }); });
+                polygon.on('mouseout', function() { this.setStyle({ fillOpacity: 0.4, weight: 2 }); });
+            }
+            
+            var sortedSchedules = Object.keys(schedules).sort();
+            for (var i = 0; i < sortedSchedules.length; i++) {
+                var schedule = sortedSchedules[i];
+                var item = document.createElement('div');
+                item.className = 'legend-item';
+                item.innerHTML = '<div class="legend-color" style="background:' + schedules[schedule] + '"></div><span>' + schedule + '</span>';
+                legendContent.appendChild(item);
+            }
+            
+            console.log('Map loaded successfully!');
+        })
+        .catch(function(error) {
+            console.error('Error loading GeoJSON:', error);
+            alert('Error loading map data. Make sure bulk-map-fortlauderdale.geojson is in the same folder!');
+        });
+});
+    </script>
+</body>
+</html>
