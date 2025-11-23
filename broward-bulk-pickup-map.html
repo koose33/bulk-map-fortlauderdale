@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broward County Bulk Pickup Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; width: 100%; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; flex-direction: column; }
+        
+        #header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        #header h1 { font-size: 28px; margin-bottom: 6px; font-weight: 700; }
+        #header p { font-size: 14px; opacity: 0.95; }
+        
+        #controls { background: white; padding: 12px 20px; border-bottom: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .city-filter { display: flex; gap: 8px; align-items: center; }
+        .city-btn { padding: 8px 16px; border-radius: 20px; border: 2px solid #e5e7eb; background: white; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+        .city-btn:hover { border-color: #9ca3af; }
+        .city-btn.active { border-color: transparent; color: white; }
+        
+        #main { flex: 1; display: flex; overflow: hidden; position: relative; }
+        #map { flex: 1; }
+        
+        #sidebar { width: 420px; background: white; border-left: 1px solid #e5e7eb; padding: 24px; overflow-y: auto; display: none; position: absolute; right: 0; top: 0; bottom: 0; z-index: 2000; box-shadow: -4px 0 12px rgba(0,0,0,0.1); }
+        #sidebar.active { display: block; }
+        
+        .close-btn { float: right; background: none; border: none; font-size: 28px; cursor: pointer; color: #9ca3af; line-height: 1; }
+        .close-btn:hover { color: #4b5563; }
+        
+        .zone-header { margin-bottom: 24px; }
+        .city-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .zone-title { font-size: 24px; font-weight: 700; color: #1f2937; }
+        
+        .info-card { background: #f9fafb; border-radius: 12px; padding: 18px; margin-bottom: 16px; border-left: 4px solid; }
+        .info-card h3 { font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .info-card p { font-size: 18px; color: #1f2937; font-weight: 600; }
+        .next-pickup { border-left-color: #10b981; background: #d1fae5; }
+        .schedule { border-left-color: #3b82f6; background: #dbeafe; }
+        
+        .btn { width: 100%; padding: 14px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px; font-size: 15px; transition: all 0.2s; }
+        .btn-calendar { background: #10b981; color: white; }
+        .btn-calendar:hover { background: #059669; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        .btn-directions { background: #8b5cf6; color: white; }
+        .btn-directions:hover { background: #7c3aed; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
+        
+        .guidelines { background: #fef3c7; border-radius: 12px; padding: 18px; margin-top: 16px; border-left: 4px solid #f59e0b; }
+        .guidelines h3 { font-size: 13px; font-weight: 700; margin-bottom: 12px; color: #92400e; }
+        .guidelines ul { list-style: none; padding: 0; }
+        .guidelines li { font-size: 13px; color: #78350f; margin-bottom: 6px; padding-left: 20px; position: relative; }
+        .guidelines li:before { content: "•"; position: absolute; left: 0; font-weight: bold; color: #f59e0b; font-size: 16px; }
+        
+        .contact-info { margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb; font-size: 13px; color: #6b7280; line-height: 1.6; }
+        .contact-info strong { color: #374151; }
+        
+        .legend { position: absolute; bottom: 20px; right: 20px; background: white; padding: 18px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; max-height: 70vh; overflow-y: auto; min-width: 220px; }
+        .legend h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #1f2937; }
+        .legend-city { margin-bottom: 16px; }
+        .legend-city-name { font-size: 12px; font-weight: 700; color: #4b5563; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 11px; color: #6b7280; }
+        .legend-color { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.15); flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        
+        .leaflet-container { background: #a8d5e2; }
+        .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        
+        @media (max-width: 768px) { 
+            #sidebar { width: 100%; }
+            .legend { bottom: 10px; right: 10px; max-height: 50vh; }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🗑️ Broward County Bulk Pickup Map</h1>
+        <p>Interactive map showing bulk trash pickup schedules for Fort Lauderdale, Oakland Park, Wilton Manors, Pompano Beach, and more</p>
+    </div>
+    
+    <div id="controls">
+        <strong style="font-size: 13px; color: #6b7280;">Filter Cities:</strong>
+        <div class="city-filter">
+            <button class="city-btn active" data-city="all">All Cities</button>
+            <button class="city-btn" data-city="Fort Lauderdale" style="background: #267fd8;">Fort Lauderdale</button>
+            <button class="city-btn" data-city="Oakland Park" style="background: #26d826;">Oakland Park</button>
+            <button class="city-btn" data-city="Wilton Manors" style="background: #7f26d8;">Wilton Manors</button>
+            <button class="city-btn" data-city="Pompano Beach" style="background: #d87f26;">Pompano Beach</button>
+        </div>
+    </div>
+    
+    <div id="main">
+        <div id="map"></div>
+        <div id="sidebar">
+            <button class="close-btn" onclick="closeSidebar()">×</button>
+            <div id="sidebar-content"></div>
+        </div>
+        <div class="legend">
+            <h3>📍 Pickup Zones by City</h3>
+            <div id="legend-content"></div>
+        </div>
+    </div>
+    
+    <script>
+// Scientifically-optimized color scheme based on CIELAB perceptual uniformity
+// Each city has distinct base hue, zones vary in lightness/chroma for distinguishability
+const cityColors = {
+    'Fort Lauderdale': {
+        base: '#267fd8',
+        schedules: {
+            '1st Monday': '#1a3d6d', '1st Tuesday': '#1f4a7f', '1st Wednesday': '#245791', '1st Thursday': '#2964a3', '1st Friday': '#2e71b5',
+            '2nd Monday': '#3d8ed1', '2nd Tuesday': '#4c9bd8', '2nd Wednesday': '#5ba8df', '2nd Thursday': '#6ab5e6', '2nd Friday': '#79c2ed',
+            '3rd Monday': '#98d4f4', '3rd Tuesday': '#a7dbf7', '3rd Wednesday': '#b6e2fa', '3rd Thursday': '#c5e9fd', '3rd Friday': '#d4f0ff',
+            '4th Monday': '#e0f5ff', '4th Tuesday': '#e7f7ff', '4th Wednesday': '#eefahff', '4th Thursday': '#f5fcff', '4th Friday': '#fcfeff'
+        }
+    },
+    'Oakland Park': {
+        base: '#26d826',
+        schedules: {
+            '1st Monday': '#145214',
+            '2nd Monday': '#26a826',
+            '3rd Monday': '#52d852',
+            '4th Monday': '#a8f4a8'
+        }
+    },
+    'Wilton Manors': {
+        base: '#7f26d8',
+        schedules: {
+            'Northwest Zone': '#4d1880',
+            'Southeast Zone': '#b36ee6'
+        }
+    },
+    'Pompano Beach': {
+        base: '#d87f26',
+        schedules: {
+            'Monday & Thursday': '#804d16',
+            'Tuesday & Friday': '#d89526',
+            'Wednesday & Saturday': '#f4c478'
+        }
+    }
+};
+
+let map, allLayers = {}, cityFilter = 'all';
+
+function getNextPickupDate(bulkday) {
+    const parts = bulkday.split(' ');
+    const weekNum = {'1st': 1, '2nd': 2, '3rd': 3, '4th': 4}[parts[0]];
+    const dayName = parts[1];
+    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const targetDayIndex = daysOfWeek.indexOf(dayName);
+    const now = new Date();
+    let currentMonth = now.getMonth();
+    let currentYear = now.getFullYear();
+    
+    function getNthWeekday(year, month, dayOfWeek, n) {
+        const firstDay = new Date(year, month, 1);
+        const firstDayOfWeek = firstDay.getDay();
+        const daysUntilTarget = (dayOfWeek - firstDayOfWeek + 7) % 7;
+        const occurrence = 1 + daysUntilTarget + (n - 1) * 7;
+        return new Date(year, month, occurrence);
+    }
+    
+    let targetDate = getNthWeekday(currentYear, currentMonth, targetDayIndex, weekNum);
+    if (targetDate < now) {
+        currentMonth++;
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        targetDate = getNthWeekday(currentYear, currentMonth, targetDayIndex, weekNum);
+    }
+    return targetDate;
+}
+
+function formatDate(date) {
+    return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function addToCalendar(bulkday, dateStr, city) {
+    const pickupDate = new Date(dateStr);
+    const formatICS = (d) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const start = new Date(pickupDate);
+    const end = new Date(pickupDate);
+    end.setHours(23, 59, 59);
+    
+    const icsLines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'BEGIN:VEVENT',
+        'UID:' + Date.now() + '@bulk',
+        'DTSTART:' + formatICS(start),
+        'DTEND:' + formatICS(end),
+        'SUMMARY:Bulk Pickup - ' + city + ' - ' + bulkday,
+        'DESCRIPTION:Bulk trash pickup for ' + city,
+        'LOCATION:' + city + ', FL',
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ];
+    
+    const blob = new Blob([icsLines.join('\n')], {type: 'text/calendar'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bulk-pickup-' + city.toLowerCase().replace(/\s/g, '-') + '.ics';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function getPolygonCenter(coords) {
+    if (coords[0][0] && Array.isArray(coords[0][0][0])) coords = coords[0];
+    let lat = 0, lng = 0, count = 0;
+    for (let i = 0; i < coords.length; i++) {
+        if (Array.isArray(coords[i]) && coords[i].length >= 2) {
+            lng += coords[i][0]; lat += coords[i][1]; count++;
+        }
+    }
+    return [lat / count, lng / count];
+}
+
+function getDirections(coords, city) {
+    const center = getPolygonCenter(coords);
+    window.open('https://www.google.com/maps/dir/?api=1&destination=' + center[0] + ',' + center[1], '_blank');
+}
+
+function showZoneDetails(feature, city) {
+    const props = feature.properties;
+    const bulkday = props.BULKDAY || props.name || props.pickup_day;
+    const schedule = props.schedule_2025 || (bulkday + ' of each month');
+    
+    // Only calculate next date for Fort Lauderdale style (1st Monday, 2nd Tuesday, etc)
+    let nextDateStr = '';
+    if (props.BULKDAY && props.BULKDAY.includes('st ') || props.BULKDAY && props.BULKDAY.includes('nd ') || 
+        props.BULKDAY && props.BULKDAY.includes('rd ') || props.BULKDAY && props.BULKDAY.includes('th ')) {
+        const nextDate = getNextPickupDate(props.BULKDAY);
+        nextDateStr = formatDate(nextDate);
+    } else if (props.schedule_2025) {
+        // Use the schedule string and find next date
+        const dates = props.schedule_2025.split(', ');
+        const today = new Date();
+        const nextDate = dates.find(d => new Date(d + ', 2025') >= today);
+        nextDateStr = nextDate ? new Date(nextDate + ', 2025').toLocaleDateString('en-US', { 
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        }) : 'Check 2026 schedule';
+    }
+    
+    const cityColor = cityColors[city].base;
+    
+    let html = '<div class="zone-header">';
+    html += '<div class="city-badge" style="background:' + cityColor + ';color:white;">' + city + '</div>';
+    html += '<div class="zone-title">' + bulkday + '</div>';
+    html += '</div>';
+    
+    html += '<div class="info-card schedule"><h3>📅 Pickup Schedule</h3><p>' + schedule + '</p></div>';
+    
+    if (nextDateStr) {
+        html += '<div class="info-card next-pickup"><h3>🗓️ Next Pickup</h3><p>' + nextDateStr + '</p></div>';
+    }
+    
+    if (props.schedule_2025 && nextDateStr !== 'Check 2026 schedule') {
+        const dates = props.schedule_2025.split(', ');
+        const today = new Date();
+        const nextDate = dates.find(d => new Date(d + ', 2025') >= today);
+        if (nextDate) {
+            html += '<button class="btn btn-calendar" onclick="addToCalendar(\'' + bulkday + '\', \'' + new Date(nextDate + ', 2025').toISOString() + '\', \'' + city + '\')">📅 Add to Calendar</button>';
+        }
+    } else if (props.BULKDAY) {
+        const nextDate = getNextPickupDate(props.BULKDAY);
+        html += '<button class="btn btn-calendar" onclick="addToCalendar(\'' + bulkday + '\', \'' + nextDate.toISOString() + '\', \'' + city + '\')">📅 Add to Calendar</button>';
+    }
+    
+    html += '<button class="btn btn-directions" onclick="getDirections(' + JSON.stringify(feature.geometry.coordinates) + ', \'' + city + '\')">🧭 Get Directions</button>';
+    
+    html += '<div class="guidelines"><h3>📋 Pickup Guidelines</h3><ul>';
+    html += '<li>Place items curbside before 7 AM</li>';
+    html += '<li>Collection typically 7 AM - 7 PM</li>';
+    html += '<li>No hazardous materials</li>';
+    html += '<li>No construction debris</li>';
+    html += '</ul></div>';
+    
+    if (props.CONTACT && props.PHONE) {
+        html += '<div class="contact-info">';
+        html += '<strong>Contact:</strong> ' + props.CONTACT + '<br>';
+        html += '<strong>Phone:</strong> ' + props.PHONE;
+        html += '</div>';
+    }
+    
+    document.getElementById('sidebar-content').innerHTML = html;
+    document.getElementById('sidebar').classList.add('active');
+}
+
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('active');
+}
+
+function filterCities(city) {
+    cityFilter = city;
+    
+    // Update button states
+    document.querySelectorAll('.city-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.city === city || (city === 'all' && btn.dataset.city === 'all')) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Show/hide layers
+    Object.keys(allLayers).forEach(layerCity => {
+        allLayers[layerCity].forEach(layer => {
+            if (city === 'all' || layerCity === city) {
+                layer.addTo(map);
+            } else {
+                map.removeLayer(layer);
+            }
+        });
+    });
+}
+
+function loadCity(cityName, geojsonUrl) {
+    fetch(geojsonUrl)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Loaded ' + data.features.length + ' zones for ' + cityName);
+            
+            allLayers[cityName] = [];
+            const cityColorScheme = cityColors[cityName];
+            
+            data.features.forEach(feature => {
+                const bulkday = feature.properties.BULKDAY || feature.properties.pickup_day || feature.properties.name;
+                const color = cityColorScheme.schedules[bulkday] || cityColorScheme.base;
+                
+                const coords = [];
+                feature.geometry.coordinates[0].forEach(c => {
+                    coords.push([c[1], c[0]]);
+                });
+                
+                const polygon = L.polygon(coords, {
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.5,
+                    weight: 2
+                });
+                
+                polygon.bindTooltip(cityName + '<br>' + bulkday, { 
+                    permanent: false, 
+                    direction: 'center',
+                    className: 'custom-tooltip'
+                });
+                
+                polygon.on('click', () => showZoneDetails(feature, cityName));
+                polygon.on('mouseover', function() { this.setStyle({ fillOpacity: 0.75, weight: 3 }); });
+                polygon.on('mouseout', function() { this.setStyle({ fillOpacity: 0.5, weight: 2 }); });
+                
+                allLayers[cityName].push(polygon);
+                polygon.addTo(map);
+            });
+            
+            updateLegend();
+        })
+        .catch(error => {
+            console.error('Error loading ' + cityName + ':', error);
+        });
+}
+
+function updateLegend() {
+    const legendContent = document.getElementById('legend-content');
+    legendContent.innerHTML = '';
+    
+    Object.keys(cityColors).forEach(city => {
+        if (!allLayers[city] || allLayers[city].length === 0) return;
+        
+        const cityDiv = document.createElement('div');
+        cityDiv.className = 'legend-city';
+        
+        const cityName = document.createElement('div');
+        cityName.className = 'legend-city-name';
+        cityName.textContent = city;
+        cityDiv.appendChild(cityName);
+        
+        const schedules = cityColors[city].schedules;
+        const displaySchedules = Object.keys(schedules).slice(0, 5); // Show first 5
+        
+        displaySchedules.forEach(schedule => {
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+            item.innerHTML = '<div class="legend-color" style="background:' + schedules[schedule] + '"></div><span>' + schedule + '</span>';
+            cityDiv.appendChild(item);
+        });
+        
+        if (Object.keys(schedules).length > 5) {
+            const more = document.createElement('div');
+            more.className = 'legend-item';
+            more.innerHTML = '<span style="font-style:italic;color:#9ca3af;">+ ' + (Object.keys(schedules).length - 5) + ' more zones</span>';
+            cityDiv.appendChild(more);
+        }
+        
+        legendContent.appendChild(cityDiv);
+    });
+}
+
+// Initialize map
+window.addEventListener('load', function() {
+    console.log('Initializing Broward County map...');
+    map = L.map('map').setView([26.1224, -80.2], 11);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19
+    }).addTo(map);
+    
+    // Load all cities
+    loadCity('Fort Lauderdale', 'bulk-map-fortlauderdale.geojson');
+    loadCity('Wilton Manors', 'wilton-manors-zones-2025.geojson');
+    // Additional cities to be loaded:
+    // loadCity('Oakland Park', 'oakland-park-zones.geojson');
+    // loadCity('Pompano Beach', 'pompano-beach-zones.geojson');
+    
+    // City filter buttons
+    document.querySelectorAll('.city-btn').forEach(btn => {
+        btn.addEventListener('click', () => filterCities(btn.dataset.city));
+    });
+});
+    </script>
+</body>
+</html>
