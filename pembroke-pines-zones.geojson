@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Pembroke Pines",
+        "name": "City-wide",
+        "schedule_2025": "Twice monthly bulk pickup",
+        "CONTACT": "Pembroke Pines Public Works",
+        "PHONE": "(954) 392-2161"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.35,
+              26.0
+            ],
+            [
+              -80.25,
+              26.0
+            ],
+            [
+              -80.25,
+              26.08
+            ],
+            [
+              -80.35,
+              26.08
+            ],
+            [
+              -80.35,
+              26.0
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

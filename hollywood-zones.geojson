@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Hollywood",
+        "name": "City-wide",
+        "schedule_2025": "Monthly bulk pickup",
+        "CONTACT": "Hollywood Public Works",
+        "PHONE": "(954) 967-4357"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.18,
+              26.0
+            ],
+            [
+              -80.08,
+              26.0
+            ],
+            [
+              -80.08,
+              26.05
+            ],
+            [
+              -80.18,
+              26.05
+            ],
+            [
+              -80.18,
+              26.0
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

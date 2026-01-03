@@ -1,0 +1,153 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Oakland Park",
+        "BULKDAY": "1st Monday",
+        "schedule_2025": "Jan 6, Feb 3, Mar 3, Apr 7, May 5, Jun 2, Jul 7, Aug 4, Sep 1, Oct 6, Nov 3, Dec 1",
+        "CONTACT": "Oakland Park Public Works",
+        "PHONE": "(954) 630-4300"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.14,
+              26.165
+            ],
+            [
+              -80.12,
+              26.165
+            ],
+            [
+              -80.12,
+              26.18
+            ],
+            [
+              -80.14,
+              26.18
+            ],
+            [
+              -80.14,
+              26.165
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Oakland Park",
+        "BULKDAY": "2nd Monday",
+        "schedule_2025": "Jan 13, Feb 10, Mar 10, Apr 14, May 12, Jun 9, Jul 14, Aug 11, Sep 8, Oct 13, Nov 10, Dec 8",
+        "CONTACT": "Oakland Park Public Works",
+        "PHONE": "(954) 630-4300"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.12,
+              26.165
+            ],
+            [
+              -80.1,
+              26.165
+            ],
+            [
+              -80.1,
+              26.18
+            ],
+            [
+              -80.12,
+              26.18
+            ],
+            [
+              -80.12,
+              26.165
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Oakland Park",
+        "BULKDAY": "3rd Monday",
+        "schedule_2025": "Jan 20, Feb 17, Mar 17, Apr 21, May 19, Jun 16, Jul 21, Aug 18, Sep 15, Oct 20, Nov 17, Dec 15",
+        "CONTACT": "Oakland Park Public Works",
+        "PHONE": "(954) 630-4300"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.14,
+              26.15
+            ],
+            [
+              -80.12,
+              26.15
+            ],
+            [
+              -80.12,
+              26.165
+            ],
+            [
+              -80.14,
+              26.165
+            ],
+            [
+              -80.14,
+              26.15
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Oakland Park",
+        "BULKDAY": "4th Monday",
+        "schedule_2025": "Jan 27, Feb 24, Mar 24, Apr 28, May 26, Jun 23, Jul 28, Aug 25, Sep 22, Oct 27, Nov 24, Dec 22",
+        "CONTACT": "Oakland Park Public Works",
+        "PHONE": "(954) 630-4300"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.12,
+              26.15
+            ],
+            [
+              -80.1,
+              26.15
+            ],
+            [
+              -80.1,
+              26.165
+            ],
+            [
+              -80.12,
+              26.165
+            ],
+            [
+              -80.12,
+              26.15
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Pompano Beach",
+        "pickup_day": "Monday & Thursday",
+        "schedule_2025": "Weekly - Every Monday and Thursday",
+        "CONTACT": "Pompano Beach Public Works",
+        "PHONE": "(954) 786-4600"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.14,
+              26.22
+            ],
+            [
+              -80.113,
+              26.22
+            ],
+            [
+              -80.113,
+              26.26
+            ],
+            [
+              -80.14,
+              26.26
+            ],
+            [
+              -80.14,
+              26.22
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Pompano Beach",
+        "pickup_day": "Tuesday & Friday",
+        "schedule_2025": "Weekly - Every Tuesday and Friday",
+        "CONTACT": "Pompano Beach Public Works",
+        "PHONE": "(954) 786-4600"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.113,
+              26.22
+            ],
+            [
+              -80.087,
+              26.22
+            ],
+            [
+              -80.087,
+              26.26
+            ],
+            [
+              -80.113,
+              26.26
+            ],
+            [
+              -80.113,
+              26.22
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Pompano Beach",
+        "pickup_day": "Wednesday & Saturday",
+        "schedule_2025": "Weekly - Every Wednesday and Saturday",
+        "CONTACT": "Pompano Beach Public Works",
+        "PHONE": "(954) 786-4600"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.087,
+              26.22
+            ],
+            [
+              -80.06,
+              26.22
+            ],
+            [
+              -80.06,
+              26.26
+            ],
+            [
+              -80.087,
+              26.26
+            ],
+            [
+              -80.087,
+              26.22
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

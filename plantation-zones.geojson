@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Plantation",
+        "name": "City-wide",
+        "schedule_2025": "Weekly bulk pickup",
+        "CONTACT": "Plantation Public Works",
+        "PHONE": "(954) 452-2540"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.28,
+              26.1
+            ],
+            [
+              -80.2,
+              26.1
+            ],
+            [
+              -80.2,
+              26.15
+            ],
+            [
+              -80.28,
+              26.15
+            ],
+            [
+              -80.28,
+              26.1
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

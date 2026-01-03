@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Sunrise",
+        "name": "City-wide",
+        "schedule_2025": "Weekly bulk pickup - follows regular trash schedule",
+        "CONTACT": "Sunrise Public Works",
+        "PHONE": "(954) 747-4600"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.32,
+              26.13
+            ],
+            [
+              -80.24,
+              26.13
+            ],
+            [
+              -80.24,
+              26.2
+            ],
+            [
+              -80.32,
+              26.2
+            ],
+            [
+              -80.32,
+              26.13
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

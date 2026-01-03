@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Miramar",
+        "name": "City-wide",
+        "schedule_2025": "Weekly bulk pickup",
+        "CONTACT": "Miramar Public Works",
+        "PHONE": "(954) 602-3000"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.38,
+              25.95
+            ],
+            [
+              -80.28,
+              25.95
+            ],
+            [
+              -80.28,
+              26.03
+            ],
+            [
+              -80.38,
+              26.03
+            ],
+            [
+              -80.38,
+              25.95
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

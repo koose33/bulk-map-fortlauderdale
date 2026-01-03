@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Coral Springs",
+        "name": "City-wide",
+        "schedule_2025": "Weekly bulk pickup",
+        "CONTACT": "Coral Springs Public Works",
+        "PHONE": "(954) 344-1828"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.3,
+              26.22
+            ],
+            [
+              -80.22,
+              26.22
+            ],
+            [
+              -80.22,
+              26.32
+            ],
+            [
+              -80.3,
+              26.32
+            ],
+            [
+              -80.3,
+              26.22
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

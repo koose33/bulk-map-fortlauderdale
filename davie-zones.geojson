@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "CITYNAME": "Davie",
+        "name": "City-wide",
+        "schedule_2025": "Monthly bulk pickup",
+        "CONTACT": "Davie Public Works",
+        "PHONE": "(954) 797-1021"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -80.3,
+              26.05
+            ],
+            [
+              -80.2,
+              26.05
+            ],
+            [
+              -80.2,
+              26.13
+            ],
+            [
+              -80.3,
+              26.13
+            ],
+            [
+              -80.3,
+              26.05
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
