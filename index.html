@@ -182,22 +182,6 @@
         <option value="wiltonmanors">Wilton Manors</option>
         <option value="oaklandpark">Oakland Park</option>
         <option value="pompanobeach">Pompano Beach</option>
-        <option value="sunrise">Sunrise</option>
-        <option value="davie">Davie</option>
-        <option value="hollywood">Hollywood</option>
-        <option value="pembrokepines">Pembroke Pines</option>
-        <option value="coralsprings">Coral Springs</option>
-        <option value="plantation">Plantation</option>
-        <option value="miramar">Miramar</option>
-        <option value="weston">Weston</option>
-        <option value="parkland">Parkland</option>
-        <option value="margate">Margate</option>
-        <option value="coconutcreek">Coconut Creek</option>
-        <option value="deerfieldbeach">Deerfield Beach</option>
-        <option value="tamarac">Tamarac</option>
-        <option value="lauderhill">Lauderhill</option>
-        <option value="northlauderdale">North Lauderdale</option>
-        <option value="lauderdalelakes">Lauderdale Lakes</option>
     </select>
 </div>
 
@@ -225,10 +209,19 @@
     }).addTo(map);
 
     let allLayers = {};
-    let cityColors = {};
+    let currentZoomLevel = 'overview'; // 'overview' or 'city'
+    let currentCity = null;
 
-    // Fort Lauderdale - Rainbow colors
-    const ftlColors = {
+    // City-level colors (when zoomed out)
+    const cityOverviewColors = {
+        'fortlauderdale': '#ef4444',
+        'wiltonmanors': '#3b82f6',
+        'oaklandpark': '#10b981',
+        'pompanobeach': '#f59e0b'
+    };
+
+    // Fort Lauderdale zone colors (when zoomed in)
+    const ftlZoneColors = {
         'Monday Week 1': '#ef4444',
         'Monday Week 2': '#f97316', 
         'Monday Week 3': '#f59e0b',
@@ -251,26 +244,24 @@
         'Friday Week 4': '#4c1d95'
     };
 
-    cityColors['fortlauderdale'] = ftlColors;
-    cityColors['wiltonmanors'] = {'Zone 1': '#3b82f6', 'Zone 2': '#8b5cf6'};
-    cityColors['oaklandpark'] = {'NW': '#ef4444', 'NE': '#3b82f6', 'SW': '#10b981', 'SE': '#f59e0b'};
-    cityColors['pompanobeach'] = {'West': '#ef4444', 'Central': '#3b82f6', 'East': '#10b981'};
-    cityColors['sunrise'] = {'Sunrise': '#f59e0b'};
-    cityColors['davie'] = {'Davie': '#ec4899'};
-    cityColors['hollywood'] = {'Hollywood': '#8b5cf6'};
-    cityColors['pembrokepines'] = {'Pembroke Pines': '#06b6d4'};
-    cityColors['coralsprings'] = {'Coral Springs': '#10b981'};
-    cityColors['plantation'] = {'Plantation': '#f97316'};
-    cityColors['miramar'] = {'Miramar': '#6366f1'};
-    cityColors['weston'] = {'Weston': '#a855f7'};
-    cityColors['parkland'] = {'Parkland': '#22c55e'};
-    cityColors['margate'] = {'Margate': '#0ea5e9'};
-    cityColors['coconutcreek'] = {'Coconut Creek': '#84cc16'};
-    cityColors['deerfieldbeach'] = {'Deerfield Beach': '#d946ef'};
-    cityColors['tamarac'] = {'Tamarac': '#f43f5e'};
-    cityColors['lauderhill'] = {'Lauderhill': '#14b8a6'};
-    cityColors['northlauderdale'] = {'North Lauderdale': '#be123c'};
-    cityColors['lauderdalelakes'] = {'Lauderdale Lakes': '#9f1239'};
+    // Other city zone colors (when zoomed in)
+    const wiltonManorsZoneColors = {'Zone 1': '#3b82f6', 'Zone 2': '#8b5cf6'};
+    const oaklandParkZoneColors = {'NW': '#ef4444', 'NE': '#3b82f6', 'SW': '#10b981', 'SE': '#f59e0b'};
+    const pompanoBeachZoneColors = {'West': '#ef4444', 'Central': '#3b82f6', 'East': '#10b981'};
+
+    const cityZoneColors = {
+        'fortlauderdale': ftlZoneColors,
+        'wiltonmanors': wiltonManorsZoneColors,
+        'oaklandpark': oaklandParkZoneColors,
+        'pompanobeach': pompanoBeachZoneColors
+    };
+
+    const citySchedules = {
+        'fortlauderdale': ftlZoneColors, // Keys are the schedules
+        'wiltonmanors': {'Zone 1': 'Weekly Monday', 'Zone 2': 'Weekly Monday'},
+        'oaklandpark': {'NW': 'Monthly 1st Monday', 'NE': 'Monthly 2nd Monday', 'SW': 'Monthly 3rd Monday', 'SE': 'Monthly 4th Monday'},
+        'pompanobeach': {'West': 'Weekly Monday', 'Central': 'Weekly Tuesday', 'East': 'Weekly Wednesday'}
+    };
 
     function getNextPickupDate(dayOfWeek, weekNumber) {
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -312,17 +303,25 @@
         a.click();
     }
 
-    function loadCity(cityKey, geoJsonFile, scheduleInfo) {
+    function getColorForFeature(cityKey, zoneName) {
+        if (currentZoomLevel === 'overview') {
+            return cityOverviewColors[cityKey] || '#94a3b8';
+        } else if (currentZoomLevel === 'city' && currentCity === cityKey) {
+            return cityZoneColors[cityKey][zoneName] || '#94a3b8';
+        } else {
+            return cityOverviewColors[cityKey] || '#94a3b8';
+        }
+    }
+
+    function loadCity(cityKey, geoJsonFile) {
         fetch(geoJsonFile)
             .then(response => response.json())
             .then(data => {
-                const colors = cityColors[cityKey] || {};
-                
                 const layer = L.geoJSON(data, {
                     style: function(feature) {
                         const zoneName = feature.properties.name || feature.properties.ZONE || feature.properties.NAME || 'Unknown';
                         return {
-                            fillColor: colors[zoneName] || '#94a3b8',
+                            fillColor: getColorForFeature(cityKey, zoneName),
                             weight: 2,
                             opacity: 1,
                             color: 'white',
@@ -331,7 +330,8 @@
                     },
                     onEachFeature: function(feature, layer) {
                         const zoneName = feature.properties.name || feature.properties.ZONE || feature.properties.NAME || 'Unknown';
-                        const schedule = scheduleInfo[zoneName] || 'Schedule info not available';
+                        const scheduleInfo = citySchedules[cityKey];
+                        const schedule = scheduleInfo[zoneName] || zoneName;
                         
                         let nextPickup = '';
                         if (schedule.includes('Monday')) nextPickup = getNextPickupDate('Monday');
@@ -340,19 +340,27 @@
                         else if (schedule.includes('Thursday')) nextPickup = getNextPickupDate('Thursday');
                         else if (schedule.includes('Friday')) nextPickup = getNextPickupDate('Friday');
                         
-                        const popupContent = `
-                            <div class="popup-content">
-                                <h3>${zoneName}</h3>
-                                <p><strong>Schedule:</strong> ${schedule}</p>
-                                ${nextPickup ? `<p><strong>Next Pickup:</strong> ${nextPickup}</p>` : ''}
-                                <div class="popup-buttons">
-                                    <button class="popup-btn calendar-btn" onclick="addToCalendar('${zoneName}', '${nextPickup}')">📅 Add to Calendar</button>
-                                    <button class="popup-btn directions-btn" onclick="getDirections(${layer.getBounds().getCenter().lat}, ${layer.getBounds().getCenter().lng})">🗺️ Directions</button>
+                        layer.on('click', function(e) {
+                            // Zoom into this city if not already zoomed
+                            if (currentZoomLevel === 'overview') {
+                                zoomToCity(cityKey);
+                            }
+                            
+                            // Show popup
+                            const popupContent = `
+                                <div class="popup-content">
+                                    <h3>${zoneName}</h3>
+                                    <p><strong>Schedule:</strong> ${schedule}</p>
+                                    ${nextPickup ? `<p><strong>Next Pickup:</strong> ${nextPickup}</p>` : ''}
+                                    <div class="popup-buttons">
+                                        <button class="popup-btn calendar-btn" onclick="addToCalendar('${zoneName}', '${nextPickup}')">📅 Add to Calendar</button>
+                                        <button class="popup-btn directions-btn" onclick="getDirections(${e.latlng.lat}, ${e.latlng.lng})">🗺️ Directions</button>
+                                    </div>
                                 </div>
-                            </div>
-                        `;
-                        
-                        layer.bindPopup(popupContent);
+                            `;
+                            
+                            layer.bindPopup(popupContent).openPopup();
+                        });
                     }
                 }).addTo(map);
                 
@@ -360,6 +368,51 @@
                 updateLegend();
             })
             .catch(error => console.error(`Error loading ${cityKey}:`, error));
+    }
+
+    function zoomToCity(cityKey) {
+        if (!allLayers[cityKey]) return;
+        
+        currentZoomLevel = 'city';
+        currentCity = cityKey;
+        
+        // Recolor all layers
+        Object.keys(allLayers).forEach(key => {
+            allLayers[key].eachLayer(function(layer) {
+                const zoneName = layer.feature.properties.name || layer.feature.properties.ZONE || layer.feature.properties.NAME || 'Unknown';
+                layer.setStyle({
+                    fillColor: getColorForFeature(key, zoneName),
+                    fillOpacity: key === cityKey ? 0.6 : 0.2,
+                    weight: 2,
+                    color: 'white'
+                });
+            });
+        });
+        
+        // Zoom to city bounds
+        map.fitBounds(allLayers[cityKey].getBounds(), { padding: [50, 50] });
+        updateLegend();
+    }
+
+    function resetToOverview() {
+        currentZoomLevel = 'overview';
+        currentCity = null;
+        
+        // Recolor all layers back to overview colors
+        Object.keys(allLayers).forEach(key => {
+            allLayers[key].eachLayer(function(layer) {
+                const zoneName = layer.feature.properties.name || layer.feature.properties.ZONE || layer.feature.properties.NAME || 'Unknown';
+                layer.setStyle({
+                    fillColor: getColorForFeature(key, zoneName),
+                    fillOpacity: 0.6,
+                    weight: 2,
+                    color: 'white'
+                });
+            });
+        });
+        
+        map.setView([26.1224, -80.1373], 11);
+        updateLegend();
     }
 
     function addToCalendar(zone, dateStr) {
@@ -382,63 +435,49 @@
         const legendContent = document.getElementById('legendContent');
         let html = '';
         
-        for (const [cityKey, colors] of Object.entries(cityColors)) {
-            if (allLayers[cityKey]) {
+        if (currentZoomLevel === 'overview') {
+            // Show city-level legend
+            html += '<div class="legend-city"><div class="legend-city-name">Cities</div>';
+            for (const [cityKey, color] of Object.entries(cityOverviewColors)) {
                 const cityName = cityKey.replace(/([A-Z])/g, ' $1').trim().replace(/^./, str => str.toUpperCase());
-                html += `<div class="legend-city">
-                    <div class="legend-city-name">${cityName}</div>`;
-                
-                for (const [zone, color] of Object.entries(colors)) {
-                    html += `<div class="legend-item">
-                        <div class="legend-color" style="background-color: ${color}"></div>
-                        <span>${zone}</span>
-                    </div>`;
-                }
-                html += '</div>';
+                html += `<div class="legend-item">
+                    <div class="legend-color" style="background-color: ${color}"></div>
+                    <span>${cityName}</span>
+                </div>`;
             }
+            html += '</div>';
+        } else if (currentCity) {
+            // Show zone-level legend for current city
+            const cityName = currentCity.replace(/([A-Z])/g, ' $1').trim().replace(/^./, str => str.toUpperCase());
+            const zoneColors = cityZoneColors[currentCity];
+            
+            html += `<div class="legend-city"><div class="legend-city-name">${cityName} Zones</div>`;
+            for (const [zone, color] of Object.entries(zoneColors)) {
+                html += `<div class="legend-item">
+                    <div class="legend-color" style="background-color: ${color}"></div>
+                    <span>${zone}</span>
+                </div>`;
+            }
+            html += '</div>';
         }
         
         legendContent.innerHTML = html;
     }
 
-    // Load all cities
-    loadCity('fortlauderdale', 'bulk-map-fortlauderdale.geojson', ftlColors);
-    loadCity('wiltonmanors', 'wilton-manors-zones-2025.geojson', {'Zone 1': 'Weekly Monday', 'Zone 2': 'Weekly Monday'});
-    loadCity('oaklandpark', 'oakland-park-zones.geojson', {'NW': 'Monthly 1st Monday', 'NE': 'Monthly 2nd Monday', 'SW': 'Monthly 3rd Monday', 'SE': 'Monthly 4th Monday'});
-    loadCity('pompanobeach', 'pompano-beach-zones.geojson', {'West': 'Weekly Monday', 'Central': 'Weekly Tuesday', 'East': 'Weekly Wednesday'});
-    loadCity('sunrise', 'sunrise-zones.geojson', {'Sunrise': 'Check city website'});
-    loadCity('davie', 'davie-zones.geojson', {'Davie': 'Check city website'});
-    loadCity('hollywood', 'hollywood-zones.geojson', {'Hollywood': 'Check city website'});
-    loadCity('pembrokepines', 'pembroke-pines-zones.geojson', {'Pembroke Pines': 'Check city website'});
-    loadCity('coralsprings', 'coral-springs-zones.geojson', {'Coral Springs': 'Check city website'});
-    loadCity('plantation', 'plantation-zones.geojson', {'Plantation': 'Check city website'});
-    loadCity('miramar', 'miramar-zones.geojson', {'Miramar': 'Check city website'});
-    loadCity('weston', 'weston-zones.geojson', {'Weston': 'Check city website'});
-    loadCity('parkland', 'parkland-zones.geojson', {'Parkland': 'Check city website'});
-    loadCity('margate', 'margate-zones.geojson', {'Margate': 'Check city website'});
-    loadCity('coconutcreek', 'coconut-creek-zones.geojson', {'Coconut Creek': 'Check city website'});
-    loadCity('deerfieldbeach', 'deerfield-beach-zones.geojson', {'Deerfield Beach': 'Check city website'});
-    loadCity('tamarac', 'tamarac-zones.geojson', {'Tamarac': 'Check city website'});
-    loadCity('lauderhill', 'lauderhill-zones.geojson', {'Lauderhill': 'Check city website'});
-    loadCity('northlauderdale', 'north-lauderdale-zones.geojson', {'North Lauderdale': 'Check city website'});
-    loadCity('lauderdalelakes', 'lauderdale-lakes-zones.geojson', {'Lauderdale Lakes': 'Check city website'});
+    // Load all cities with ORIGINAL working GeoJSON files
+    loadCity('fortlauderdale', 'bulk-map-fortlauderdale.geojson');
+    loadCity('wiltonmanors', 'wilton-manors-zones-2025.geojson');
+    loadCity('oaklandpark', 'oakland-park-zones.geojson');
+    loadCity('pompanobeach', 'pompano-beach-zones.geojson');
 
     // City filter
     document.getElementById('citySelect').addEventListener('change', function(e) {
         const selected = e.target.value;
         
-        for (const [cityKey, layer] of Object.entries(allLayers)) {
-            if (selected === 'all' || selected === cityKey) {
-                map.addLayer(layer);
-            } else {
-                map.removeLayer(layer);
-            }
-        }
-        
-        if (selected !== 'all' && allLayers[selected]) {
-            map.fitBounds(allLayers[selected].getBounds());
+        if (selected === 'all') {
+            resetToOverview();
         } else {
-            map.setView([26.1224, -80.1373], 11);
+            zoomToCity(selected);
         }
     });
 </script>
