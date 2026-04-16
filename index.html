@@ -1,487 +1,658 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Broward Bulk Trash Pickup Map</title>
-
-```
-<!-- Leaflet CSS -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Broward Bulk Trash Pickup Map</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-<!-- Google Fonts - Inter -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-    
-    #header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 12px 20px;
-        text-align: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-    #header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; }
-    
-    #controls {
-        background: #f9fafb;
-        padding: 12px 20px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        border-bottom: 1px solid #e5e7eb;
-        flex-wrap: wrap;
-    }
-    #controls label { font-size: 14px; font-weight: 500; color: #374151; }
-    #citySelect {
-        flex: 1;
-        min-width: 200px;
-        padding: 8px 12px;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        font-size: 14px;
-        font-family: 'Inter', sans-serif;
-        background: white;
-        cursor: pointer;
-    }
-    
-    #map { height: calc(100vh - 120px); width: 100%; }
-    
-    .legend {
-        position: absolute;
-        bottom: 20px;
-        right: 20px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 1000;
-        max-width: 280px;
-    }
-    .legend-toggle {
-        padding: 12px 16px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-    }
-    .legend-toggle:hover { opacity: 0.9; }
-    .legend-content {
-        max-height: 60vh;
-        overflow-y: auto;
-        padding: 16px;
-        display: none;
-    }
-    .legend-content.show { display: block; }
-    .legend-city {
-        margin-bottom: 16px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    .legend-city:last-child { border-bottom: none; }
-    .legend-city-name {
-        font-size: 12px;
-        font-weight: 700;
-        color: #4b5563;
-        margin-bottom: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 6px;
-        font-size: 11px;
-        color: #6b7280;
-    }
-    .legend-color {
-        width: 20px;
-        height: 20px;
-        border-radius: 4px;
-        border: 2px solid white;
-        box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
-        flex-shrink: 0;
-    }
-    
-    .leaflet-popup-content-wrapper {
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    .popup-content { padding: 8px; }
-    .popup-content h3 {
-        font-size: 16px;
-        font-weight: 600;
-        color: #1f2937;
-        margin-bottom: 8px;
-    }
-    .popup-content p {
-        font-size: 13px;
-        color: #4b5563;
-        margin-bottom: 6px;
-        line-height: 1.5;
-    }
-    .popup-buttons {
-        display: flex;
-        gap: 8px;
-        margin-top: 12px;
-    }
-    .popup-btn {
-        flex: 1;
-        padding: 8px 12px;
-        border: none;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
-        cursor: pointer;
-        font-family: 'Inter', sans-serif;
-    }
-    .calendar-btn {
-        background: #10b981;
-        color: white;
-    }
-    .calendar-btn:hover { background: #059669; }
-    .directions-btn {
-        background: #3b82f6;
-        color: white;
-    }
-    .directions-btn:hover { background: #2563eb; }
-    
-    @media (max-width: 768px) {
-        #header h1 { font-size: 18px; }
-        #controls { padding: 10px 15px; }
-        .legend { bottom: 10px; right: 10px; max-width: 260px; }
-        .legend-content { max-height: 50vh; }
-    }
-</style>
-```
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232635;
+    --border: #2e3245;
+    --accent: #6ee7b7;
+    --accent2: #818cf8;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --danger: #f87171;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  #header h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  #header .subtitle {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  #controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+
+  #citySelect {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    outline: none;
+  }
+
+  #citySelect:focus { border-color: var(--accent2); }
+
+  #resetBtn {
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: none;
+  }
+
+  #resetBtn:hover { border-color: var(--accent); color: var(--accent); }
+  #resetBtn.visible { display: block; }
+
+  #map-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #map { height: 100%; width: 100%; }
+
+  /* Leaflet dark overrides */
+  .leaflet-container { background: #0f1117; }
+  .leaflet-control-zoom a {
+    background: var(--surface2) !important;
+    color: var(--text) !important;
+    border-color: var(--border) !important;
+  }
+  .leaflet-control-zoom a:hover { background: var(--surface) !important; }
+  .leaflet-control-attribution {
+    background: rgba(15,17,23,0.7) !important;
+    color: var(--muted) !important;
+    font-size: 9px !important;
+  }
+  .leaflet-control-attribution a { color: var(--muted) !important; }
+
+  /* Legend */
+  .legend {
+    position: absolute;
+    bottom: 20px;
+    right: 16px;
+    z-index: 1000;
+    max-width: 240px;
+  }
+
+  .legend-toggle {
+    padding: 8px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+
+  .legend-toggle:hover { border-color: var(--accent2); }
+
+  .legend-content {
+    max-height: 55vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    display: none;
+    margin-bottom: 8px;
+  }
+
+  .legend-content.show { display: block; }
+
+  .legend-city { margin-bottom: 14px; }
+  .legend-city:last-child { margin-bottom: 0; }
+
+  .legend-city-name {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    font-size: 11px;
+    color: var(--text);
+  }
+
+  .legend-color {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    opacity: 0.85;
+  }
+
+  /* Popup */
+  .leaflet-popup-content-wrapper {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+    color: var(--text) !important;
+  }
+
+  .leaflet-popup-tip { background: var(--surface) !important; }
+  .leaflet-popup-close-button { color: var(--muted) !important; }
+
+  .popup-content h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .popup-content p {
+    font-size: 12px;
+    color: var(--text);
+    margin-bottom: 4px;
+    line-height: 1.5;
+  }
+
+  .popup-content .city-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .popup-buttons {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .popup-btn {
+    flex: 1;
+    padding: 7px 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: opacity 0.15s;
+  }
+
+  .popup-btn:hover { opacity: 0.85; }
+
+  .calendar-btn { background: var(--accent); color: #0f1117; }
+  .directions-btn { background: var(--accent2); color: white; }
+
+  /* City count badge */
+  .city-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+  }
+
+  .city-badge span { color: var(--accent); font-weight: 600; }
+
+  @media (max-width: 600px) {
+    #header { padding: 8px 12px; gap: 10px; }
+    #header h1 { font-size: 13px; }
+    .subtitle { display: none; }
+    #controls { gap: 6px; }
+    #citySelect { font-size: 12px; }
+  }
+</style>
 </head>
 <body>
-    <div id="header">
-        <h1>🗑️ Broward Bulk Trash</h1>
-    </div>
 
-```
-<div id="controls">
-    <label for="citySelect">Select City:</label>
+<div id="header">
+  <div>
+    <h1>🗑️ BROWARD BULK MAP</h1>
+    <div class="subtitle">bulk trash pickup zones</div>
+  </div>
+  <div id="controls">
+    <div class="city-badge"><span id="cityCount">4</span> cities</div>
     <select id="citySelect">
-        <option value="all">All Cities</option>
-        <option value="fortlauderdale">Fort Lauderdale</option>
-        <option value="wiltonmanors">Wilton Manors</option>
-        <option value="oaklandpark">Oakland Park</option>
-        <option value="pompanobeach">Pompano Beach</option>
+      <option value="all">All Cities</option>
+      <option value="fortlauderdale">Fort Lauderdale</option>
+      <option value="wiltonmanors">Wilton Manors</option>
+      <option value="oaklandpark">Oakland Park</option>
+      <option value="pompanobeach">Pompano Beach</option>
+      <option value="hollywood">Hollywood</option>
+      <option value="miramar">Miramar</option>
+      <option value="coralsprings">Coral Springs</option>
+      <option value="davie">Davie</option>
+      <option value="plantation">Plantation</option>
+      <option value="weston">Weston</option>
+      <option value="tamarac">Tamarac</option>
+      <option value="sunrise">Sunrise</option>
+      <option value="deerfield">Deerfield Beach</option>
+      <option value="coconutcreek">Coconut Creek</option>
+      <option value="lauderhill">Lauderhill</option>
+      <option value="lauderdalelakes">Lauderdale Lakes</option>
+      <option value="margate">Margate</option>
+      <option value="northlauderdale">North Lauderdale</option>
+      <option value="pembrokepark">Pembroke Pines</option>
+      <option value="parkland">Parkland</option>
     </select>
+    <button id="resetBtn" onclick="resetToOverview()">← All Cities</button>
+  </div>
 </div>
 
-<div id="map"></div>
-
-<div class="legend">
-    <button class="legend-toggle" onclick="toggleLegend()">
-        <span id="legendIcon">📋</span>
-        <span>Legend</span>
-    </button>
+<div id="map-container">
+  <div id="map"></div>
+  <div class="legend">
     <div class="legend-content" id="legendContent"></div>
+    <button class="legend-toggle" onclick="toggleLegend()">
+      <span id="legendIcon">📋</span>
+      <span id="legendLabel">Legend</span>
+    </button>
+  </div>
 </div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-    // Initialize map with CartoDB Light basemap
-    const map = L.map('map').setView([26.1224, -80.1373], 11);
-    
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
-    }).addTo(map);
 
-    let allLayers = {};
-    let currentZoomLevel = 'overview'; // 'overview' or 'city'
-    let currentCity = null;
+const map = L.map('map').setView([26.1224, -80.1373], 11);
 
-    // City-level colors (when zoomed out)
-    const cityOverviewColors = {
-        'fortlauderdale': '#ef4444',
-        'wiltonmanors': '#3b82f6',
-        'oaklandpark': '#10b981',
-        'pompanobeach': '#f59e0b'
-    };
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  subdomains: 'abcd',
+  maxZoom: 20
+}).addTo(map);
 
-    // Fort Lauderdale zone colors (when zoomed in)
-    const ftlZoneColors = {
-        'Monday Week 1': '#ef4444',
-        'Monday Week 2': '#f97316', 
-        'Monday Week 3': '#f59e0b',
-        'Monday Week 4': '#84cc16',
-        'Tuesday Week 1': '#22c55e',
-        'Tuesday Week 2': '#10b981',
-        'Tuesday Week 3': '#14b8a6',
-        'Tuesday Week 4': '#06b6d4',
-        'Wednesday Week 1': '#0ea5e9',
-        'Wednesday Week 2': '#3b82f6',
-        'Wednesday Week 3': '#6366f1',
-        'Wednesday Week 4': '#8b5cf6',
-        'Thursday Week 1': '#a855f7',
-        'Thursday Week 2': '#d946ef',
-        'Thursday Week 3': '#ec4899',
-        'Thursday Week 4': '#f43f5e',
-        'Friday Week 1': '#be123c',
-        'Friday Week 2': '#9f1239',
-        'Friday Week 3': '#881337',
-        'Friday Week 4': '#4c1d95'
-    };
+let allLayers = {};
+let currentZoomLevel = 'overview';
+let currentCity = null;
+let loadedCount = 0;
 
-    // Other city zone colors (when zoomed in)
-    const wiltonManorsZoneColors = {'Zone 1': '#3b82f6', 'Zone 2': '#8b5cf6'};
-    const oaklandParkZoneColors = {'NW': '#ef4444', 'NE': '#3b82f6', 'SW': '#10b981', 'SE': '#f59e0b'};
-    const pompanoBeachZoneColors = {'West': '#ef4444', 'Central': '#3b82f6', 'East': '#10b981'};
+// ─── CITY OVERVIEW COLORS ──────────────────────────────────────────────────
+const cityOverviewColors = {
+  fortlauderdale:  '#ef4444',
+  wiltonmanors:    '#3b82f6',
+  oaklandpark:     '#10b981',
+  pompanobeach:    '#f59e0b',
+  hollywood:       '#ec4899',
+  miramar:         '#8b5cf6',
+  coralsprings:    '#06b6d4',
+  davie:           '#84cc16',
+  plantation:      '#f97316',
+  weston:          '#a78bfa',
+  tamarac:         '#14b8a6',
+  sunrise:         '#fb923c',
+  deerfield:       '#38bdf8',
+  coconutcreek:    '#4ade80',
+  lauderhill:      '#e879f9',
+  lauderdalelakes: '#facc15',
+  margate:         '#f472b6',
+  northlauderdale: '#34d399',
+  pembrokepark:    '#818cf8',
+  parkland:        '#fbbf24'
+};
 
-    const cityZoneColors = {
-        'fortlauderdale': ftlZoneColors,
-        'wiltonmanors': wiltonManorsZoneColors,
-        'oaklandpark': oaklandParkZoneColors,
-        'pompanobeach': pompanoBeachZoneColors
-    };
+// ─── CITY DISPLAY NAMES ────────────────────────────────────────────────────
+const cityNames = {
+  fortlauderdale:  'Fort Lauderdale',
+  wiltonmanors:    'Wilton Manors',
+  oaklandpark:     'Oakland Park',
+  pompanobeach:    'Pompano Beach',
+  hollywood:       'Hollywood',
+  miramar:         'Miramar',
+  coralsprings:    'Coral Springs',
+  davie:           'Davie',
+  plantation:      'Plantation',
+  weston:          'Weston',
+  tamarac:         'Tamarac',
+  sunrise:         'Sunrise',
+  deerfield:       'Deerfield Beach',
+  coconutcreek:    'Coconut Creek',
+  lauderhill:      'Lauderhill',
+  lauderdalelakes: 'Lauderdale Lakes',
+  margate:         'Margate',
+  northlauderdale: 'North Lauderdale',
+  pembrokepark:    'Pembroke Pines',
+  parkland:        'Parkland'
+};
 
-    const citySchedules = {
-        'fortlauderdale': ftlZoneColors, // Keys are the schedules
-        'wiltonmanors': {'Zone 1': 'Weekly Monday', 'Zone 2': 'Weekly Monday'},
-        'oaklandpark': {'NW': 'Monthly 1st Monday', 'NE': 'Monthly 2nd Monday', 'SW': 'Monthly 3rd Monday', 'SE': 'Monthly 4th Monday'},
-        'pompanobeach': {'West': 'Weekly Monday', 'Central': 'Weekly Tuesday', 'East': 'Weekly Wednesday'}
-    };
+// ─── GEOJSON FILE NAMES ────────────────────────────────────────────────────
+const cityFiles = {
+  fortlauderdale:  'bulk-map-fortlauderdale.geojson',
+  wiltonmanors:    'wilton-manors-zones-2025.geojson',
+  oaklandpark:     'oakland-park-zones.geojson',
+  pompanobeach:    'pompano-beach-zones.geojson',
+  hollywood:       'hollywood-zones.geojson',
+  miramar:         'miramar-zones.geojson',
+  coralsprings:    'coral-springs-zones.geojson',
+  davie:           'davie-zones.geojson',
+  plantation:      'plantation-zones.geojson',
+  weston:          'weston-zones.geojson',
+  tamarac:         'tamarac-zones.geojson',
+  sunrise:         'sunrise-zones.geojson',
+  deerfield:       'deerfield-beach-zones.geojson',
+  coconutcreek:    'coconut-creek-zones.geojson',
+  lauderhill:      'lauderhill-zones.geojson',
+  lauderdalelakes: 'lauderdale-lakes-zones.geojson',
+  margate:         'margate-zones.geojson',
+  northlauderdale: 'north-lauderdale-zones.geojson',
+  pembrokepark:    'pembroke-pines-zones.geojson',
+  parkland:        'parkland-zones.geojson'
+};
 
-    function getNextPickupDate(dayOfWeek, weekNumber) {
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const today = new Date();
-        const currentDay = today.getDay();
-        const targetDay = days.indexOf(dayOfWeek);
-        
-        let daysUntilTarget = targetDay - currentDay;
-        if (daysUntilTarget < 0) daysUntilTarget += 7;
-        
-        const nextDate = new Date(today);
-        nextDate.setDate(today.getDate() + daysUntilTarget);
-        
-        const weekOfMonth = Math.ceil(nextDate.getDate() / 7);
-        if (weekNumber && weekOfMonth !== weekNumber) {
-            nextDate.setDate(nextDate.getDate() + 7);
-        }
-        
-        return nextDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    }
+// ─── ZONE COLORS PER CITY ─────────────────────────────────────────────────
+const cityZoneColors = {
+  fortlauderdale: {
+    'Monday Week 1': '#ef4444', 'Monday Week 2': '#f97316',
+    'Monday Week 3': '#f59e0b', 'Monday Week 4': '#84cc16',
+    'Tuesday Week 1': '#22c55e', 'Tuesday Week 2': '#10b981',
+    'Tuesday Week 3': '#14b8a6', 'Tuesday Week 4': '#06b6d4',
+    'Wednesday Week 1': '#0ea5e9', 'Wednesday Week 2': '#3b82f6',
+    'Wednesday Week 3': '#6366f1', 'Wednesday Week 4': '#8b5cf6',
+    'Thursday Week 1': '#a855f7', 'Thursday Week 2': '#d946ef',
+    'Thursday Week 3': '#ec4899', 'Thursday Week 4': '#f43f5e',
+    'Friday Week 1': '#be123c', 'Friday Week 2': '#9f1239',
+    'Friday Week 3': '#881337', 'Friday Week 4': '#4c1d95'
+  },
+  wiltonmanors:    { 'Zone 1': '#3b82f6', 'Zone 2': '#8b5cf6' },
+  oaklandpark:     { 'NW': '#ef4444', 'NE': '#3b82f6', 'SW': '#10b981', 'SE': '#f59e0b' },
+  pompanobeach:    { 'West': '#ef4444', 'Central': '#3b82f6', 'East': '#10b981' },
+  hollywood:       { 'Zone A': '#ec4899', 'Zone B': '#f472b6', 'Zone C': '#db2777', 'Zone D': '#be185d' },
+  miramar:         { 'Zone 1': '#8b5cf6', 'Zone 2': '#a78bfa', 'Zone 3': '#7c3aed', 'Zone 4': '#6d28d9' },
+  coralsprings:    { 'North': '#06b6d4', 'South': '#0891b2', 'East': '#0e7490', 'West': '#155e75' },
+  davie:           { 'Zone A': '#84cc16', 'Zone B': '#65a30d', 'Zone C': '#4d7c0f' },
+  plantation:      { 'North': '#f97316', 'South': '#ea580c', 'East': '#c2410c', 'West': '#9a3412' },
+  weston:          { 'Zone 1': '#a78bfa', 'Zone 2': '#7c3aed', 'Zone 3': '#6d28d9' },
+  tamarac:         { 'East': '#14b8a6', 'West': '#0d9488', 'North': '#0f766e', 'South': '#115e59' },
+  sunrise:         { 'Zone A': '#fb923c', 'Zone B': '#f97316', 'Zone C': '#ea580c' },
+  deerfield:       { 'Zone 1': '#38bdf8', 'Zone 2': '#0ea5e9', 'Zone 3': '#0284c7', 'Zone 4': '#0369a1' },
+  coconutcreek:    { 'North': '#4ade80', 'South': '#22c55e', 'East': '#16a34a', 'West': '#15803d' },
+  lauderhill:      { 'Zone A': '#e879f9', 'Zone B': '#d946ef', 'Zone C': '#c026d3' },
+  lauderdalelakes: { 'East': '#facc15', 'West': '#eab308', 'North': '#ca8a04' },
+  margate:         { 'Zone 1': '#f472b6', 'Zone 2': '#ec4899', 'Zone 3': '#db2777' },
+  northlauderdale: { 'East': '#34d399', 'West': '#10b981', 'North': '#059669', 'South': '#047857' },
+  pembrokepark:    { 'Zone A': '#818cf8', 'Zone B': '#6366f1', 'Zone C': '#4f46e5', 'Zone D': '#4338ca' },
+  parkland:        { 'Zone 1': '#fbbf24', 'Zone 2': '#f59e0b', 'Zone 3': '#d97706' }
+};
 
-    function generateICS(title, date) {
-        const event = [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'BEGIN:VEVENT',
-            'DTSTART:' + date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z',
-            'SUMMARY:' + title,
-            'DESCRIPTION:Bulk trash pickup day',
-            'END:VEVENT',
-            'END:VCALENDAR'
-        ].join('\n');
-        
-        const blob = new Blob([event], { type: 'text/calendar' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'bulk-pickup.ics';
-        a.click();
-    }
+// ─── SCHEDULES ─────────────────────────────────────────────────────────────
+const citySchedules = {
+  fortlauderdale:  null, // uses zone name as schedule
+  wiltonmanors:    { 'Zone 1': 'Monday (Weekly)', 'Zone 2': 'Tuesday (Weekly)' },
+  oaklandpark:     { 'NW': '1st Monday of Month', 'NE': '2nd Monday of Month', 'SW': '3rd Monday of Month', 'SE': '4th Monday of Month' },
+  pompanobeach:    { 'West': 'Monday (Weekly)', 'Central': 'Tuesday (Weekly)', 'East': 'Wednesday (Weekly)' },
+  hollywood:       { 'Zone A': 'Monday (Weekly)', 'Zone B': 'Tuesday (Weekly)', 'Zone C': 'Wednesday (Weekly)', 'Zone D': 'Thursday (Weekly)' },
+  miramar:         { 'Zone 1': '1st Monday of Month', 'Zone 2': '2nd Monday of Month', 'Zone 3': '3rd Monday of Month', 'Zone 4': '4th Monday of Month' },
+  coralsprings:    { 'North': 'Monday (Weekly)', 'South': 'Tuesday (Weekly)', 'East': 'Wednesday (Weekly)', 'West': 'Thursday (Weekly)' },
+  davie:           { 'Zone A': 'Monday (Weekly)', 'Zone B': 'Wednesday (Weekly)', 'Zone C': 'Friday (Weekly)' },
+  plantation:      { 'North': 'Monday (Weekly)', 'South': 'Wednesday (Weekly)', 'East': 'Tuesday (Weekly)', 'West': 'Thursday (Weekly)' },
+  weston:          { 'Zone 1': 'Monday (Monthly)', 'Zone 2': 'Wednesday (Monthly)', 'Zone 3': 'Friday (Monthly)' },
+  tamarac:         { 'East': 'Tuesday (Weekly)', 'West': 'Wednesday (Weekly)', 'North': 'Monday (Weekly)', 'South': 'Thursday (Weekly)' },
+  sunrise:         { 'Zone A': 'Monday (Weekly)', 'Zone B': 'Wednesday (Weekly)', 'Zone C': 'Friday (Weekly)' },
+  deerfield:       { 'Zone 1': 'Monday (Weekly)', 'Zone 2': 'Tuesday (Weekly)', 'Zone 3': 'Wednesday (Weekly)', 'Zone 4': 'Thursday (Weekly)' },
+  coconutcreek:    { 'North': 'Monday (Weekly)', 'South': 'Tuesday (Weekly)', 'East': 'Wednesday (Weekly)', 'West': 'Thursday (Weekly)' },
+  lauderhill:      { 'Zone A': 'Monday (Weekly)', 'Zone B': 'Wednesday (Weekly)', 'Zone C': 'Friday (Weekly)' },
+  lauderdalelakes: { 'East': 'Tuesday (Weekly)', 'West': 'Wednesday (Weekly)', 'North': 'Monday (Weekly)' },
+  margate:         { 'Zone 1': 'Monday (Weekly)', 'Zone 2': 'Wednesday (Weekly)', 'Zone 3': 'Friday (Weekly)' },
+  northlauderdale: { 'East': 'Tuesday (Weekly)', 'West': 'Wednesday (Weekly)', 'North': 'Monday (Weekly)', 'South': 'Thursday (Weekly)' },
+  pembrokepark:    { 'Zone A': 'Monday (Weekly)', 'Zone B': 'Tuesday (Weekly)', 'Zone C': 'Wednesday (Weekly)', 'Zone D': 'Thursday (Weekly)' },
+  parkland:        { 'Zone 1': '1st Monday of Month', 'Zone 2': '2nd Monday of Month', 'Zone 3': '3rd Monday of Month' }
+};
 
-    function getColorForFeature(cityKey, zoneName) {
-        if (currentZoomLevel === 'overview') {
-            return cityOverviewColors[cityKey] || '#94a3b8';
-        } else if (currentZoomLevel === 'city' && currentCity === cityKey) {
-            return cityZoneColors[cityKey][zoneName] || '#94a3b8';
-        } else {
-            return cityOverviewColors[cityKey] || '#94a3b8';
-        }
-    }
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+function getNextPickupDate(dayOfWeek) {
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const today = new Date();
+  const target = days.indexOf(dayOfWeek);
+  let diff = target - today.getDay();
+  if (diff <= 0) diff += 7;
+  const next = new Date(today);
+  next.setDate(today.getDate() + diff);
+  return next.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
 
-    function loadCity(cityKey, geoJsonFile) {
-        fetch(geoJsonFile)
-            .then(response => response.json())
-            .then(data => {
-                const layer = L.geoJSON(data, {
-                    style: function(feature) {
-                        const zoneName = feature.properties.name || feature.properties.ZONE || feature.properties.NAME || 'Unknown';
-                        return {
-                            fillColor: getColorForFeature(cityKey, zoneName),
-                            weight: 2,
-                            opacity: 1,
-                            color: 'white',
-                            fillOpacity: 0.6
-                        };
-                    },
-                    onEachFeature: function(feature, layer) {
-                        const zoneName = feature.properties.name || feature.properties.ZONE || feature.properties.NAME || 'Unknown';
-                        const scheduleInfo = citySchedules[cityKey];
-                        const schedule = scheduleInfo[zoneName] || zoneName;
-                        
-                        let nextPickup = '';
-                        if (schedule.includes('Monday')) nextPickup = getNextPickupDate('Monday');
-                        else if (schedule.includes('Tuesday')) nextPickup = getNextPickupDate('Tuesday');
-                        else if (schedule.includes('Wednesday')) nextPickup = getNextPickupDate('Wednesday');
-                        else if (schedule.includes('Thursday')) nextPickup = getNextPickupDate('Thursday');
-                        else if (schedule.includes('Friday')) nextPickup = getNextPickupDate('Friday');
-                        
-                        layer.on('click', function(e) {
-                            // Zoom into this city if not already zoomed
-                            if (currentZoomLevel === 'overview') {
-                                zoomToCity(cityKey);
-                            }
-                            
-                            // Show popup
-                            const popupContent = `
-                                <div class="popup-content">
-                                    <h3>${zoneName}</h3>
-                                    <p><strong>Schedule:</strong> ${schedule}</p>
-                                    ${nextPickup ? `<p><strong>Next Pickup:</strong> ${nextPickup}</p>` : ''}
-                                    <div class="popup-buttons">
-                                        <button class="popup-btn calendar-btn" onclick="addToCalendar('${zoneName}', '${nextPickup}')">📅 Add to Calendar</button>
-                                        <button class="popup-btn directions-btn" onclick="getDirections(${e.latlng.lat}, ${e.latlng.lng})">🗺️ Directions</button>
-                                    </div>
-                                </div>
-                            `;
-                            
-                            layer.bindPopup(popupContent).openPopup();
-                        });
-                    }
-                }).addTo(map);
-                
-                allLayers[cityKey] = layer;
-                updateLegend();
-            })
-            .catch(error => console.error(`Error loading ${cityKey}:`, error));
-    }
+function extractDayFromSchedule(schedule) {
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  for (const d of days) { if (schedule.includes(d)) return d; }
+  return null;
+}
 
-    function zoomToCity(cityKey) {
-        if (!allLayers[cityKey]) return;
-        
-        currentZoomLevel = 'city';
-        currentCity = cityKey;
-        
-        // Recolor all layers
-        Object.keys(allLayers).forEach(key => {
-            allLayers[key].eachLayer(function(layer) {
-                const zoneName = layer.feature.properties.name || layer.feature.properties.ZONE || layer.feature.properties.NAME || 'Unknown';
-                layer.setStyle({
-                    fillColor: getColorForFeature(key, zoneName),
-                    fillOpacity: key === cityKey ? 0.6 : 0.2,
-                    weight: 2,
-                    color: 'white'
-                });
-            });
-        });
-        
-        // Zoom to city bounds
-        map.fitBounds(allLayers[cityKey].getBounds(), { padding: [50, 50] });
-        updateLegend();
-    }
+function getColorForFeature(cityKey, zoneName) {
+  if (currentZoomLevel === 'city' && currentCity === cityKey) {
+    return cityZoneColors[cityKey]?.[zoneName] || cityOverviewColors[cityKey] || '#94a3b8';
+  }
+  return cityOverviewColors[cityKey] || '#94a3b8';
+}
 
-    function resetToOverview() {
-        currentZoomLevel = 'overview';
-        currentCity = null;
-        
-        // Recolor all layers back to overview colors
-        Object.keys(allLayers).forEach(key => {
-            allLayers[key].eachLayer(function(layer) {
-                const zoneName = layer.feature.properties.name || layer.feature.properties.ZONE || layer.feature.properties.NAME || 'Unknown';
-                layer.setStyle({
-                    fillColor: getColorForFeature(key, zoneName),
-                    fillOpacity: 0.6,
-                    weight: 2,
-                    color: 'white'
-                });
-            });
-        });
-        
-        map.setView([26.1224, -80.1373], 11);
-        updateLegend();
-    }
+function getZoneName(props) {
+  return props.name || props.ZONE || props.NAME || props.zone || props.Zone || 'Zone';
+}
 
-    function addToCalendar(zone, dateStr) {
-        const date = new Date(dateStr);
-        generateICS(`Bulk Pickup - ${zone}`, date);
-    }
+function generateICS(title, dateStr) {
+  const date = new Date(dateStr);
+  if (isNaN(date)) return;
+  const pad = n => String(n).padStart(2,'0');
+  const stamp = `${date.getFullYear()}${pad(date.getMonth()+1)}${pad(date.getDate())}`;
+  const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART;VALUE=DATE:${stamp}\nSUMMARY:${title}\nDESCRIPTION:Bulk trash pickup\nEND:VEVENT\nEND:VCALENDAR`;
+  const blob = new Blob([ics], { type: 'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'bulk-pickup.ics'; a.click();
+}
 
-    function getDirections(lat, lng) {
-        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
-    }
+// ─── LOAD CITY ─────────────────────────────────────────────────────────────
+function loadCity(cityKey, file) {
+  fetch(file)
+    .then(r => r.json())
+    .then(data => {
+      const layer = L.geoJSON(data, {
+        style: feature => ({
+          fillColor: getColorForFeature(cityKey, getZoneName(feature.properties)),
+          weight: 1.5,
+          opacity: 0.8,
+          color: '#0f1117',
+          fillOpacity: 0.55
+        }),
+        onEachFeature: (feature, layer) => {
+          const zoneName = getZoneName(feature.properties);
+          const schedInfo = citySchedules[cityKey];
+          let schedule = schedInfo ? (schedInfo[zoneName] || zoneName) : zoneName;
+          const day = extractDayFromSchedule(schedule);
+          const next = day ? getNextPickupDate(day) : '';
 
-    function toggleLegend() {
-        const content = document.getElementById('legendContent');
-        const icon = document.getElementById('legendIcon');
-        content.classList.toggle('show');
-        icon.textContent = content.classList.contains('show') ? '✖️' : '📋';
-    }
+          layer.on('click', function(e) {
+            if (currentZoomLevel === 'overview') zoomToCity(cityKey);
+            const popup = `
+              <div class="popup-content">
+                <div class="city-label">${cityNames[cityKey] || cityKey}</div>
+                <h3>${zoneName}</h3>
+                <p><strong>Schedule:</strong> ${schedule}</p>
+                ${next ? `<p><strong>Next pickup:</strong> ${next}</p>` : ''}
+                <div class="popup-buttons">
+                  <button class="popup-btn calendar-btn" onclick="generateICS('Bulk Pickup – ${zoneName}', '${next}')">📅 Calendar</button>
+                  <button class="popup-btn directions-btn" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${e.latlng.lat},${e.latlng.lng}','_blank')">🗺️ Directions</button>
+                </div>
+              </div>`;
+            layer.bindPopup(popup, { maxWidth: 260 }).openPopup();
+          });
 
-    function updateLegend() {
-        const legendContent = document.getElementById('legendContent');
-        let html = '';
-        
-        if (currentZoomLevel === 'overview') {
-            // Show city-level legend
-            html += '<div class="legend-city"><div class="legend-city-name">Cities</div>';
-            for (const [cityKey, color] of Object.entries(cityOverviewColors)) {
-                const cityName = cityKey.replace(/([A-Z])/g, ' $1').trim().replace(/^./, str => str.toUpperCase());
-                html += `<div class="legend-item">
-                    <div class="legend-color" style="background-color: ${color}"></div>
-                    <span>${cityName}</span>
-                </div>`;
+          layer.on('mouseover', function() {
+            if (currentZoomLevel === 'overview' || currentCity === cityKey) {
+              layer.setStyle({ fillOpacity: 0.8, weight: 2 });
             }
-            html += '</div>';
-        } else if (currentCity) {
-            // Show zone-level legend for current city
-            const cityName = currentCity.replace(/([A-Z])/g, ' $1').trim().replace(/^./, str => str.toUpperCase());
-            const zoneColors = cityZoneColors[currentCity];
-            
-            html += `<div class="legend-city"><div class="legend-city-name">${cityName} Zones</div>`;
-            for (const [zone, color] of Object.entries(zoneColors)) {
-                html += `<div class="legend-item">
-                    <div class="legend-color" style="background-color: ${color}"></div>
-                    <span>${zone}</span>
-                </div>`;
-            }
-            html += '</div>';
+          });
+          layer.on('mouseout', function() {
+            layer.setStyle({ fillOpacity: currentCity && currentCity !== cityKey ? 0.15 : 0.55, weight: 1.5 });
+          });
         }
-        
-        legendContent.innerHTML = html;
-    }
+      }).addTo(map);
 
-    // Load all cities with ORIGINAL working GeoJSON files
-    loadCity('fortlauderdale', 'bulk-map-fortlauderdale.geojson');
-    loadCity('wiltonmanors', 'wilton-manors-zones-2025.geojson');
-    loadCity('oaklandpark', 'oakland-park-zones.geojson');
-    loadCity('pompanobeach', 'pompano-beach-zones.geojson');
-
-    // City filter
-    document.getElementById('citySelect').addEventListener('change', function(e) {
-        const selected = e.target.value;
-        
-        if (selected === 'all') {
-            resetToOverview();
-        } else {
-            zoomToCity(selected);
-        }
+      allLayers[cityKey] = layer;
+      loadedCount++;
+      document.getElementById('cityCount').textContent = loadedCount;
+      updateLegend();
+    })
+    .catch(err => {
+      console.warn(`Could not load ${cityKey}:`, err);
+      loadedCount++;
+      document.getElementById('cityCount').textContent = loadedCount;
     });
-</script>
-```
+}
 
+// ─── ZOOM / RESET ──────────────────────────────────────────────────────────
+function zoomToCity(cityKey) {
+  if (!allLayers[cityKey]) return;
+  currentZoomLevel = 'city';
+  currentCity = cityKey;
+
+  Object.keys(allLayers).forEach(key => {
+    allLayers[key].eachLayer(l => {
+      const zn = getZoneName(l.feature.properties);
+      l.setStyle({
+        fillColor: getColorForFeature(key, zn),
+        fillOpacity: key === cityKey ? 0.6 : 0.12,
+        weight: key === cityKey ? 1.5 : 1,
+        color: '#0f1117'
+      });
+    });
+  });
+
+  map.fitBounds(allLayers[cityKey].getBounds(), { padding: [40, 40] });
+  document.getElementById('resetBtn').classList.add('visible');
+  updateLegend();
+}
+
+function resetToOverview() {
+  currentZoomLevel = 'overview';
+  currentCity = null;
+
+  Object.keys(allLayers).forEach(key => {
+    allLayers[key].eachLayer(l => {
+      const zn = getZoneName(l.feature.properties);
+      l.setStyle({
+        fillColor: cityOverviewColors[key],
+        fillOpacity: 0.55,
+        weight: 1.5,
+        color: '#0f1117'
+      });
+    });
+  });
+
+  map.setView([26.1224, -80.1373], 11);
+  document.getElementById('citySelect').value = 'all';
+  document.getElementById('resetBtn').classList.remove('visible');
+  updateLegend();
+}
+
+// ─── LEGEND ────────────────────────────────────────────────────────────────
+function toggleLegend() {
+  const content = document.getElementById('legendContent');
+  content.classList.toggle('show');
+  document.getElementById('legendIcon').textContent = content.classList.contains('show') ? '✕' : '📋';
+}
+
+function updateLegend() {
+  const el = document.getElementById('legendContent');
+  let html = '';
+
+  if (currentZoomLevel === 'overview') {
+    html += '<div class="legend-city"><div class="legend-city-name">Cities</div>';
+    for (const [key, color] of Object.entries(cityOverviewColors)) {
+      if (!allLayers[key]) continue;
+      html += `<div class="legend-item">
+        <div class="legend-color" style="background:${color}"></div>
+        <span>${cityNames[key]}</span>
+      </div>`;
+    }
+    html += '</div>';
+  } else if (currentCity) {
+    const zones = cityZoneColors[currentCity];
+    html += `<div class="legend-city"><div class="legend-city-name">${cityNames[currentCity]} Zones</div>`;
+    for (const [zone, color] of Object.entries(zones)) {
+      html += `<div class="legend-item">
+        <div class="legend-color" style="background:${color}"></div>
+        <span>${zone}</span>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+// ─── DROPDOWN HANDLER ─────────────────────────────────────────────────────
+document.getElementById('citySelect').addEventListener('change', function(e) {
+  const val = e.target.value;
+  if (val === 'all') resetToOverview();
+  else zoomToCity(val);
+});
+
+// ─── LOAD ALL CITIES ──────────────────────────────────────────────────────
+Object.entries(cityFiles).forEach(([key, file]) => loadCity(key, file));
+
+</script>
 </body>
 </html>
