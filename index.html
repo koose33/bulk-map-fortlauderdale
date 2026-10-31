@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Broward Bulk Trash</title>
+<meta name="description" content="Find your bulk trash pickup zone and next pickup date anywhere in Broward County.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --ink: #0f172a;
+    --ink-2: #334155;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --accent: #2563eb;
+    --shadow: 0 10px 30px rgba(15, 23, 42, .12), 0 2px 6px rgba(15, 23, 42, .06);
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    padding-top: max(10px, env(safe-area-inset-top));
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    z-index: 1000;
+    flex-shrink: 0;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+    background: conic-gradient(#ef4444, #f97316, #eab308, #22c55e, #14b8a6, #3b82f6, #8b5cf6, #ec4899, #ef4444);
+  }
+  .brand h1 { font-size: 16px; font-weight: 800; letter-spacing: -.01em; white-space: nowrap; }
+  .brand p { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brand-text { min-width: 0; }
+  .back-btn {
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    font: 600 13px Inter, sans-serif; padding: 8px 12px; border-radius: 10px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .back-btn:hover { background: var(--bg); }
+  .city-select {
+    font: 500 14px Inter, sans-serif; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface);
+    max-width: 210px; cursor: pointer;
+  }
+
+  /* ---------- Map ---------- */
+  #stage { position: relative; flex: 1; min-height: 0; }
+  #map { position: absolute; inset: 0; background: #eef2f7; }
+  .leaflet-container { font-family: inherit; }
+  .leaflet-interactive { transition: fill-opacity .15s ease; }
+
+  .city-label {
+    background: transparent; border: 0; box-shadow: none; padding: 0;
+    font: 600 11px Inter, sans-serif; color: #0f172a;
+    text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff;
+    transition: font-size .12s ease, opacity .15s ease;
+    pointer-events: none;
+  }
+  .city-label::before { display: none; }
+  .city-label.is-hover { font-weight: 800; font-size: 14px; }
+  .city-label.is-dim { opacity: .35 !important; }
+  .city-label.is-hidden { visibility: hidden; }
+
+  /* ---------- Hint ---------- */
+  .hint {
+    position: absolute; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+    background: rgba(15, 23, 42, .88); color: #fff; font-size: 13px; font-weight: 500;
+    padding: 9px 14px; border-radius: 999px; z-index: 900; pointer-events: none; white-space: nowrap;
+  }
+
+  /* ---------- Zone legend ---------- */
+  .legend {
+    position: absolute; left: 12px; bottom: 12px; z-index: 900;
+    width: 250px; max-height: 45vh; display: flex; flex-direction: column;
+    background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .legend-head {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    padding: 10px 12px; font-weight: 700; font-size: 13px; cursor: pointer; border: 0; background: none;
+    font-family: inherit; color: var(--ink); text-align: left; width: 100%;
+  }
+  .legend-head span:last-child { color: var(--muted); font-weight: 500; }
+  .legend ul { list-style: none; overflow-y: auto; border-top: 1px solid var(--line); }
+  .legend.collapsed ul { display: none; }
+  .legend li {
+    display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; font-size: 13px;
+  }
+  .legend li:hover, .legend li.active { background: #f1f5f9; }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+  .legend li small { display: block; color: var(--muted); font-size: 11px; }
+
+  /* ---------- Detail panel ---------- */
+  .panel {
+    position: absolute; top: 12px; right: 12px; z-index: 950;
+    width: 360px; max-height: calc(100% - 24px); overflow-y: auto;
+    background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 18px;
+  }
+  .panel-close {
+    position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 50%;
+    border: 0; background: #f1f5f9; font-size: 18px; line-height: 32px; cursor: pointer; color: var(--ink-2);
+  }
+  .eyebrow { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .zone-title { display: flex; align-items: center; gap: 10px; margin: 6px 40px 4px 0; font-size: 20px; font-weight: 800; }
+  .zone-title .swatch { width: 18px; height: 18px; border-radius: 6px; }
+  .schedule { color: var(--ink-2); font-size: 14px; margin-bottom: 14px; }
+  .next-card {
+    border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; color: #fff;
+  }
+  .next-card .label { font-size: 12px; font-weight: 600; opacity: .9; text-transform: uppercase; letter-spacing: .06em; }
+  .next-card .date { font-size: 24px; font-weight: 800; margin-top: 2px; }
+  .next-card .when { font-size: 13px; opacity: .92; margin-top: 2px; }
+  .upcoming { margin-bottom: 14px; }
+  .upcoming h3 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .upcoming ul { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .upcoming li { font-size: 13px; background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .actions { display: grid; gap: 8px; margin-bottom: 12px; }
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font: 600 14px Inter, sans-serif; padding: 12px 14px; border-radius: 12px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none;
+  }
+  .btn:hover { background: #f8fafc; }
+  .btn-primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn-primary:hover { background: #1e293b; }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .note { font-size: 12.5px; color: var(--ink-2); background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+  .fineprint { font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .fineprint a, .note a { color: var(--accent); }
+
+  /* ---------- Mobile ---------- */
+  @media (max-width: 700px) {
+    .brand p { display: none; }
+    .city-select { max-width: 140px; font-size: 13px; }
+    .back-btn { padding: 8px 10px; }
+    .panel {
+      top: auto; right: 0; left: 0; bottom: 0; width: 100%;
+      max-height: 62%; border-radius: 20px 20px 0 0;
+      padding-bottom: max(18px, env(safe-area-inset-bottom));
+    }
+    .panel::before {
+      content: ""; display: block; width: 40px; height: 4px; border-radius: 4px; background: #cbd5e1; margin: -6px auto 12px;
+    }
+    .legend { left: 8px; right: auto; bottom: 8px; width: calc(100% - 16px); max-height: 38vh; }
+    .legend:not(.collapsed) { max-height: 38vh; }
+    .hint { font-size: 12px; }
+    body.in-city .brand-text { display: none; }
+    body.panel-open .leaflet-control-zoom { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <button id="backBtn" class="back-btn" hidden>&larr; All of Broward</button>
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true"></div>
+    <div class="brand-text">
+      <h1>Broward Bulk Trash</h1>
+      <p id="subtitle">Tap a city to see its bulk pickup zones</p>
+    </div>
+  </div>
+  <select id="citySelect" class="city-select" aria-label="Choose a city">
+    <option value="">Choose a city…</option>
+  </select>
+</header>
+
+<div id="stage">
+<div id="map" role="application" aria-label="Map of Broward County bulk trash zones"></div>
+<div id="hint" class="hint">Tap a city to zoom in</div>
+
+<section id="legend" class="legend collapsed" hidden>
+  <button id="legendHead" class="legend-head" type="button"><span>Zones</span><span id="legendCount"></span></button>
+  <ul id="legendList"></ul>
+</section>
+
+<aside id="panel" class="panel" hidden aria-live="polite">
+  <button id="panelClose" class="panel-close" aria-label="Close">&times;</button>
+  <div id="panelBody"></div>
+</aside>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* =====================================================================
+   Broward Bulk Trash – interactive bulk pickup map
+   - Overview: every Broward city in rainbow colors. Hover = darker shade
+     + bold name. Click = zoom into that city.
+   - City view: chosen city bright, neighbors dulled. Its zones in rainbow
+     colors. Hover zone = darker. Tap zone = next pickup date, add to
+     calendar, directions.
+   ===================================================================== */
+
+// ---------- 1. Data: which file holds each city's zones ----------
+// Keys match CITYNAME in Broward-Cities.geojson (county outlines).
+const CITIES = {
+  'FORT LAUDERDALE': { file: 'Bulk-Map-FortLauderdale.geojson' },
+  'WILTON MANORS':   { file: 'Bulk-Map-WiltonManors.geojson' },
+  'OAKLAND PARK':    { file: 'Bulk-Map-OaklandPark.geojson',
+                       note: 'No pickup in weeks that start on a 5th Monday. Items out by 7 a.m. Monday of your week.' },
+  'POMPANO BEACH':   { file: 'Bulk-Map-PompanoBeach.geojson' },
+  'SUNRISE':         { file: 'Bulk-Map-Sunrise.geojson' },
+  'DAVIE':           { file: 'Bulk-Map-Davie.geojson',
+                       note: 'Part of northeast Davie has no zone in the town’s data. If your home isn’t colored, call the Town of Davie.' },
+  'MIRAMAR':         { file: 'Bulk-Map-Miramar.geojson' },
+  'PEMBROKE PINES':  { file: 'Bulk-Map-PembrokePines.geojson' },
+  'DEERFIELD BEACH': { file: 'Bulk-Map-DeerfieldBeach.geojson' },
+  'LAUDERHILL':      { file: 'Bulk-Map-Lauderhill.geojson',
+                       note: 'Lauderhill has not published its 2026 bulk dates online yet. Call the city to confirm your date.' },
+  'MARGATE':         { file: 'Bulk-Map-Margate.geojson' },
+  'TAMARAC':         { file: 'Bulk-Map-Tamarac.geojson' },
+  'WESTON':          { file: 'Bulk-Map-Weston.geojson' },
+  'CORAL SPRINGS':   { file: 'Bulk-Map-CoralSprings.geojson' },
+
+  // Cities with no public zone map yet – shown with guidance only.
+  'COCONUT CREEK':   { info: 'Single-family bulk is picked up on your first garbage day of the week. Coconut Creek doesn’t publish a zone map.',
+                       link: { label: 'Look up your day (Republic Services)', url: 'https://www.republicservices.com/schedule' } },
+  'PARKLAND':        { info: 'Bulk is picked up monthly, on a day set by your neighborhood. Parkland lists neighborhoods by name instead of a map.',
+                       link: { label: 'Parkland 2026 bulk schedule (PDF)', url: 'https://www.cityofparkland.org/DocumentCenter/View/23886/Parkland-2026-Bulk-Schedule---FINAL' } },
+  'PLANTATION':      { info: 'Bulk is picked up monthly, on a day set by your area (east or west of University Drive). The city only publishes PDF maps.' },
+  'HOLLYWOOD':       { info: 'Hollywood doesn’t publish a bulk zone map online. Contact the city to confirm your bulk day.' },
+  'LAUDERDALE LAKES':{ info: 'Lauderdale Lakes doesn’t publish a bulk zone map online. Contact the city to confirm your bulk day.' },
+  'NORTH LAUDERDALE':{ info: 'North Lauderdale doesn’t publish a bulk zone map online. Contact the city to confirm your bulk day.' },
+};
+
+// Rainbow palette (red → pink). Neighbors get different colors.
+const RAINBOW = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#0ea5e9', '#3b82f6', '#8b5cf6', '#ec4899'];
+const DULL = { fillColor: '#cbd5e1', fillOpacity: 0.28, color: '#94a3b8', weight: 1 };
+
+// ---------- 2. Small helpers ----------
+const $ = id => document.getElementById(id);
+const titleCase = s => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()).replace(/\bBy\b/g, 'by').replace(/\bThe\b/g, 'the');
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+function shade(hex, amt) {                 // amt < 0 darker, > 0 lighter
+  let [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const f = v => Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt)));
+  return '#' + [f(r), f(g), f(b)].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+// Give touching shapes different colors (greedy coloring on bounding boxes).
+function assignColors(layers, palette) {
+  const items = layers.map(l => ({ l, b: l.getBounds().pad(0.02) }));
+  items.sort((a, b) => area(b.b) - area(a.b));
+  items.forEach((it, i) => {
+    const used = new Set(items.slice(0, i).filter(o => o.b.intersects(it.b)).map(o => o.color));
+    it.color = palette.find(c => !used.has(c)) || palette[i % palette.length];
+    it.l._color = it.color;
+  });
+  function area(b) { return (b.getEast() - b.getWest()) * (b.getNorth() - b.getSouth()); }
+}
+
+// ---------- 3. Dates ----------
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const parseISO = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const fmtLong = d => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+const fmtShort = d => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+function nthWeekday(y, m, weekday, n) {   // m = 0-11
+  const first = new Date(y, m, 1);
+  const offset = (DAYS.indexOf(weekday) - first.getDay() + 7) % 7;
+  const d = new Date(y, m, 1 + offset + (n - 1) * 7);
+  return d.getMonth() === m ? d : null;
+}
+
+// Dates come from the city's published list first, then the repeat rule
+// keeps them going (so the map never "runs out" at the end of the year).
+function upcomingDates(p, count = 12) {
+  const start = today();
+  let dates = (p.bulk_dates || []).map(parseISO).filter(d => d >= start);
+  const r = p.rule;
+  if (r && dates.length < count) {
+    let from = dates.length ? new Date(dates[dates.length - 1].getTime() + 86400000) : start;
+    const lastListed = (p.bulk_dates || []).map(parseISO).pop();
+    if (lastListed && lastListed >= from) from = new Date(lastListed.getTime() + 86400000);
+    if (r.type === 'weekly') {
+      const d = new Date(from);
+      while (d.getDay() !== DAYS.indexOf(r.weekday)) d.setDate(d.getDate() + 1);
+      while (dates.length < count) { dates.push(new Date(d)); d.setDate(d.getDate() + 7); }
+    } else if (r.type === 'nth') {
+      let y = from.getFullYear(), m = from.getMonth();
+      for (let i = 0; i < 48 && dates.length < count; i++) {
+        if (r.months.includes(m + 1)) {
+          r.n.map(n => nthWeekday(y, m, r.weekday, n)).filter(Boolean)
+            .map(d => { d.setDate(d.getDate() + (r.offset || 0)); return d; })
+            .filter(d => d >= from).sort((a, b) => a - b)
+            .forEach(d => { if (dates.length < count) dates.push(d); });
+        }
+        if (++m > 11) { m = 0; y++; }
+      }
+    }
+  }
+  return dates.slice(0, count);
+}
+
+function daysAway(d) {
+  const n = Math.round((d - today()) / 86400000);
+  return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `In ${n} days`;
+}
+
+// ---------- 4. Calendar + directions ----------
+function downloadICS(city, zone, dates, schedule) {
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const esc = s => String(s).replace(/[,;\\]/g, m => '\\' + m);
+  const events = dates.map(d => {
+    const a = iso(d).replace(/-/g, '');
+    const nx = new Date(d); nx.setDate(nx.getDate() + 1);
+    return [
+      'BEGIN:VEVENT',
+      `UID:${a}-${slug(city)}-${slug(zone)}@browardbulktrash`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART;VALUE=DATE:${a}`,
+      `DTEND;VALUE=DATE:${iso(nx).replace(/-/g, '')}`,
+      `SUMMARY:${esc(`Bulk trash pickup – ${city}`)}`,
+      `DESCRIPTION:${esc(`${zone}. ${schedule}. Put bulk items at the curb the night before.`)}`,
+      'BEGIN:VALARM', 'TRIGGER:-PT5H', 'ACTION:DISPLAY', 'DESCRIPTION:Bulk pickup tomorrow – put items out tonight', 'END:VALARM',
+      'END:VEVENT'
+    ].join('\r\n');
+  });
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Broward Bulk Trash//EN', 'CALSCALE:GREGORIAN', ...events, 'END:VCALENDAR'].join('\r\n');
+  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = `bulk-pickup-${slug(city)}-${slug(zone)}.ics`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function googleCalLink(city, zone, d, schedule) {
+  const a = iso(d).replace(/-/g, '');
+  const nx = new Date(d); nx.setDate(nx.getDate() + 1);
+  const q = new URLSearchParams({
+    action: 'TEMPLATE', text: `Bulk trash pickup – ${city}`,
+    dates: `${a}/${iso(nx).replace(/-/g, '')}`,
+    details: `${zone}. ${schedule}. Put bulk items at the curb the night before.`
+  });
+  return `https://calendar.google.com/calendar/render?${q}`;
+}
+const directionsLink = ll => `https://www.google.com/maps/dir/?api=1&destination=${ll.lat.toFixed(6)},${ll.lng.toFixed(6)}`;
+
+// ---------- 5. Map setup ----------
+const map = L.map('map', { zoomControl: false, preferCanvas: false }).setView([26.15, -80.25], 10);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  maxZoom: 19, subdomains: 'abcd',
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> · Zone data: city GIS'
+}).addTo(map);
+
+const state = { city: null, cityLayers: {}, zonesLayer: null, zoneItems: [], activeZone: null, browardBounds: null };
+
+// ---------- 6. Overview (all of Broward) ----------
+function overviewStyle(l) {
+  return { fillColor: l._color, fillOpacity: 0.55, color: '#ffffff', weight: 1.5 };
+}
+
+fetch('Broward-Cities.geojson').then(r => r.json()).then(data => {
+  const layer = L.geoJSON(data, {
+    onEachFeature: (f, l) => {
+      const key = f.properties.CITYNAME;
+      l._key = key;
+      state.cityLayers[key] = l;
+      const big = showLabel(l);
+      l.bindTooltip(titleCase(key), { permanent: true, direction: 'center', className: 'city-label' + (big ? '' : ' is-hidden') });
+      l.on('mouseover', () => hoverCity(l, true));
+      l.on('mouseout', () => hoverCity(l, false));
+      l.on('click', e => { L.DomEvent.stopPropagation(e); if (state.city !== key) openCity(key); });
+    }
+  }).addTo(map);
+
+  assignColors(Object.values(state.cityLayers), RAINBOW);
+  Object.values(state.cityLayers).forEach(l => l.setStyle(overviewStyle(l)));
+  state.browardBounds = layer.getBounds();
+  map.fitBounds(state.browardBounds, { padding: [10, 10] });
+
+  // City dropdown
+  const sel = $('citySelect');
+  Object.keys(state.cityLayers).sort().forEach(k => {
+    if (['BMSD', 'TRIBAL LAND'].includes(k)) return;
+    const o = document.createElement('option');
+    o.value = k; o.textContent = titleCase(k) + (CITIES[k] && CITIES[k].file ? '' : ' (info only)');
+    sel.appendChild(o);
+  });
+
+  // Deep link: #city=fort-lauderdale
+  const m = location.hash.match(/city=([a-z-]+)/);
+  if (m) { const k = Object.keys(state.cityLayers).find(k => slug(k) === m[1]); if (k) openCity(k); }
+});
+
+function showLabel(l) {
+  if (['BMSD', 'TRIBAL LAND', 'LAZY LAKE', 'SEA RANCH LAKES', 'HILLSBORO BEACH', 'PEMBROKE PARK', 'WEST PARK'].includes(l._key)) return false;
+  const b = l.getBounds();
+  return (b.getNorth() - b.getSouth()) * (b.getEast() - b.getWest()) > 0.0006;
+}
+function labelEl(l) { const t = l.getTooltip(); return t && t.getElement(); }
+
+function hoverCity(l, on) {
+  const el = labelEl(l);
+  if (state.city) {                         // in city view: neighbors stay dull, but still clickable
+    if (l._key === state.city) return;
+    l.setStyle(on ? { fillOpacity: 0.45, fillColor: '#94a3b8' } : DULL);
+    if (el) el.classList.toggle('is-hover', on);
+    return;
+  }
+  l.setStyle(on ? { fillColor: shade(l._color, -0.25), fillOpacity: 0.8, weight: 2.5 } : overviewStyle(l));
+  if (on) l.bringToFront();
+  if (el) el.classList.toggle('is-hover', on);
+  $('hint').textContent = on ? `Tap to open ${titleCase(l._key)}` : 'Tap a city to zoom in';
+}
+
+// ---------- 7. City view ----------
+async function openCity(key) {
+  closePanel();
+  if (state.zonesLayer) { map.removeLayer(state.zonesLayer); state.zonesLayer = null; }
+  state.city = key;
+  const cfg = CITIES[key] || {};
+  const cityLayer = state.cityLayers[key];
+
+  // Dull every other city; outline the chosen one.
+  Object.values(state.cityLayers).forEach(l => {
+    const el = labelEl(l);
+    if (l === cityLayer) {
+      l.setStyle({ fillColor: l._color, fillOpacity: cfg.file ? 0.08 : 0.5, color: '#0f172a', weight: 3 });
+      if (el) el.classList.add('is-hidden');
+    } else {
+      l.setStyle(DULL);
+      if (el) { el.classList.add('is-dim'); el.classList.remove('is-hover'); }
+    }
+  });
+  cityLayer.bringToFront();
+  map.fitBounds(cityLayer.getBounds(), { padding: [20, 20] });
+
+  $('backBtn').hidden = false;
+  document.body.classList.add('in-city');
+  $('citySelect').value = key;
+  $('subtitle').textContent = titleCase(key);
+  $('hint').hidden = true;
+  history.replaceState(null, '', '#city=' + slug(key));
+
+  if (!cfg.file) { showCityInfo(key, cfg); hideLegend(); return; }
+
+  const data = await fetch(cfg.file).then(r => r.json());
+  if (state.city !== key) return;            // user moved on while loading
+
+  state.zoneItems = [];
+  state.zonesLayer = L.geoJSON(data, {
+    onEachFeature: (f, l) => {
+      state.zoneItems.push({ f, l });
+      l.on('mouseover', () => { l.setStyle({ fillColor: shade(l._color, -0.3), fillOpacity: 0.85, weight: 2.5 }); });
+      l.on('mouseout', () => { if (state.activeZone !== l) l.setStyle(zoneStyle(l)); });
+      l.on('click', e => { L.DomEvent.stopPropagation(e); selectZone(f, l, e.latlng); });
+      l.bindTooltip(f.properties.name || 'Zone', { sticky: true, direction: 'top', opacity: 0.95 });
+    }
+  });
+  assignColors(state.zoneItems.map(z => z.l), RAINBOW);
+  state.zoneItems.forEach(z => z.l.setStyle(zoneStyle(z.l)));
+  state.zonesLayer.addTo(map);
+  buildLegend();
+}
+
+function zoneStyle(l) { return { fillColor: l._color, fillOpacity: 0.6, color: '#ffffff', weight: 1.2 }; }
+
+function backToBroward() {
+  closePanel(); hideLegend();
+  if (state.zonesLayer) { map.removeLayer(state.zonesLayer); state.zonesLayer = null; }
+  state.city = null; state.activeZone = null;
+  Object.values(state.cityLayers).forEach(l => {
+    l.setStyle(overviewStyle(l));
+    const el = labelEl(l);
+    if (el) {
+      el.classList.remove('is-dim', 'is-hover');
+      const big = showLabel(l);
+      el.classList.toggle('is-hidden', !big);
+    }
+  });
+  map.fitBounds(state.browardBounds, { padding: [10, 10] });
+  $('backBtn').hidden = true;
+  document.body.classList.remove('in-city');
+  $('citySelect').value = '';
+  $('subtitle').textContent = 'Tap a city to see its bulk pickup zones';
+  $('hint').hidden = false; $('hint').textContent = 'Tap a city to zoom in';
+  history.replaceState(null, '', location.pathname);
+}
+
+// ---------- 8. Legend ----------
+function buildLegend() {
+  const list = $('legendList'); list.innerHTML = '';
+  const items = [...state.zoneItems].sort((a, b) =>
+    (a.f.properties.name || '').localeCompare(b.f.properties.name || '', undefined, { numeric: true }));
+  items.forEach(({ f, l }) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="swatch" style="background:${l._color}"></span>
+      <span>${f.properties.name || 'Zone'}<small>${f.properties.schedule || ''}</small></span>`;
+    li.onclick = () => selectZone(f, l, l.getBounds().getCenter());
+    li.onmouseenter = () => l.fire('mouseover');
+    li.onmouseleave = () => l.fire('mouseout');
+    l._legendItem = li;
+    list.appendChild(li);
+  });
+  $('legendCount').textContent = `${items.length} zone${items.length === 1 ? '' : 's'}`;
+  $('legend').hidden = false;
+  $('legend').classList.toggle('collapsed', window.innerWidth <= 700);
+}
+function hideLegend() { $('legend').hidden = true; }
+$('legendHead').onclick = () => $('legend').classList.toggle('collapsed');
+
+// ---------- 9. Zone details panel ----------
+function selectZone(f, l, latlng) {
+  if (state.activeZone && state.activeZone !== l) state.activeZone.setStyle(zoneStyle(state.activeZone));
+  state.zoneItems.forEach(z => z.l._legendItem && z.l._legendItem.classList.toggle('active', z.l === l));
+  state.activeZone = l;
+  l.setStyle({ fillColor: shade(l._color, -0.3), fillOpacity: 0.85, weight: 3, color: '#0f172a' });
+  l.bringToFront();
+
+  const p = f.properties;
+  const city = titleCase(state.city);
+  const zone = p.name || 'Zone';
+  const dates = upcomingDates(p, 12);
+  const next = dates[0];
+  const cfg = CITIES[state.city] || {};
+  const color = l._color;
+
+  let html = `<div class="eyebrow">${city}</div>
+    <div class="zone-title"><span class="swatch" style="background:${color}"></span>${zone}</div>
+    <p class="schedule">${p.schedule || ''}${p.garbage_days ? ` · Garbage ${p.garbage_days}` : ''}</p>`;
+
+  if (next) {
+    html += `<div class="next-card" style="background:${shade(color, -0.35)}">
+        <div class="label">Next bulk pickup</div>
+        <div class="date">${fmtLong(next)}</div>
+        <div class="when">${daysAway(next)} · put items out the night before</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="addAll">＋ Add all ${dates.length} dates to my calendar</button>
+        <div class="btn-row">
+          <a class="btn" target="_blank" rel="noopener" href="${googleCalLink(city, zone, next, p.schedule || '')}">Google Calendar</a>
+          <a class="btn" target="_blank" rel="noopener" href="${directionsLink(latlng)}">Directions</a>
+        </div>
+      </div>
+      <div class="upcoming"><h3>Coming up</h3><ul>${dates.slice(1, 7).map(d => `<li>${fmtShort(d)}</li>`).join('')}</ul></div>`;
+  } else {
+    html += `<div class="note">${p.bulk_day && p.bulk_day.startsWith('See') ? 'Apartments, condos and private-service properties: ask your property management for bulk days.' : 'Upcoming dates for this zone aren’t published yet.'}</div>
+      <div class="actions"><a class="btn" target="_blank" rel="noopener" href="${directionsLink(latlng)}">Directions</a></div>`;
+  }
+  if (cfg.note) html += `<div class="note">${cfg.note}</div>`;
+  if (p.note) html += `<p class="fineprint">${p.note}</p>`;
+  if (p.neighborhoods) html += `<p class="fineprint"><strong>Neighborhoods:</strong> ${p.neighborhoods.slice(0, 12).join(', ')}${p.neighborhoods.length > 12 ? ` +${p.neighborhoods.length - 12} more` : ''}</p>`;
+  html += `<p class="fineprint" style="margin-top:8px">Holidays can move a pickup. Source: ${p.source || 'city GIS'}.</p>`;
+
+  openPanel(html);
+  showZoneBesidePanel(l);
+  const addAll = $('addAll');
+  if (addAll) addAll.onclick = () => downloadICS(city, zone, dates, p.schedule || '');
+}
+
+function showCityInfo(key, cfg) {
+  const city = titleCase(key);
+  let html = `<div class="eyebrow">Broward County</div>
+    <div class="zone-title">${city}</div>
+    <div class="note">${cfg.info || `${city} isn’t on the map yet.`}</div>`;
+  if (cfg.link) html += `<div class="actions"><a class="btn btn-primary" target="_blank" rel="noopener" href="${cfg.link.url}">${cfg.link.label}</a></div>`;
+  html += `<div class="actions"><a class="btn" target="_blank" rel="noopener" href="${directionsLink(state.cityLayers[key].getBounds().getCenter())}">Directions to ${city}</a></div>`;
+  openPanel(html);
+}
+
+function openPanel(html) {
+  $('panelBody').innerHTML = html; $('panel').hidden = false; $('panel').scrollTop = 0;
+  document.body.classList.add('panel-open');
+}
+// Keep the chosen zone visible next to (desktop) or above (phone) the details card.
+function showZoneBesidePanel(l) {
+  const mobile = window.innerWidth <= 700;
+  const pad = mobile ? { paddingTopLeft: [20, 20], paddingBottomRight: [20, $('panel').offsetHeight + 20] }
+                     : { paddingTopLeft: [20, 20], paddingBottomRight: [$('panel').offsetWidth + 40, 20] };
+  map.fitBounds(l.getBounds(), { ...pad, maxZoom: 16 });
+}
+function closePanel() {
+  $('panel').hidden = true;
+  document.body.classList.remove('panel-open');
+  if (state.activeZone) { state.activeZone.setStyle(zoneStyle(state.activeZone)); state.activeZone = null; }
+  state.zoneItems.forEach(z => z.l._legendItem && z.l._legendItem.classList.remove('active'));
+}
+
+// ---------- 10. Controls ----------
+$('panelClose').onclick = closePanel;
+$('backBtn').onclick = backToBroward;
+$('citySelect').onchange = e => e.target.value ? openCity(e.target.value) : backToBroward();
+map.on('click', () => { if (state.activeZone) closePanel(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (!$('panel').hidden) closePanel(); else if (state.city) backToBroward(); } });
+</script>
+</body>
+</html>
