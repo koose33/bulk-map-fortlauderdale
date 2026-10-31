@@ -79,7 +79,20 @@
     pointer-events: none;
   }
   .city-label::before { display: none; }
-  .city-label.is-hover { font-weight: 800; font-size: 14px; }
+  .city-label { font-size: 12px; font-weight: 700; }
+  .city-label.is-hover { font-weight: 800; font-size: 15px; }
+  .zone-label {
+    background: rgba(255,255,255,.95); border: 0; border-radius: 999px; padding: 3px 8px;
+    box-shadow: 0 1px 4px rgba(15,23,42,.25); font: 700 11.5px Inter, sans-serif; color: #0f172a;
+    white-space: nowrap; pointer-events: none;
+  }
+  .zone-label::before { display: none; }
+  .zone-label.is-hidden { visibility: hidden; }
+  .zone-tip { border: 0; border-radius: 12px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(15,23,42,.18); font-family: Inter, sans-serif; }
+  .zone-tip b { display: block; font-size: 13.5px; margin-bottom: 2px; }
+  .zone-tip .s { color: #334155; font-size: 12.5px; }
+  .zone-tip .n { margin-top: 6px; font-size: 12.5px; font-weight: 700; }
+  .zone-tip .h { margin-top: 4px; font-size: 11px; color: #64748b; }
   .city-label.is-dim { opacity: .35 !important; }
   .city-label.is-hidden { visibility: hidden; }
 
@@ -362,11 +375,20 @@ function googleCalLink(city, zone, d, schedule) {
 const directionsLink = ll => `https://www.google.com/maps/dir/?api=1&destination=${ll.lat.toFixed(6)},${ll.lng.toFixed(6)}`;
 
 // ---------- 5. Map setup ----------
-const map = L.map('map', { zoomControl: false, preferCanvas: false }).setView([26.15, -80.25], 10);
+const map = L.map('map', { zoomControl: false, preferCanvas: false, maxZoom: 18 }).setView([26.15, -80.25], 10);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  maxZoom: 19, subdomains: 'abcd',
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> · Zone data: city GIS'
+// Background map: Esri Light Gray Canvas (free, no API key). Street/place names
+// sit in their own layer ABOVE our colored zones so they stay readable.
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+L.tileLayer(ESRI + 'World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 16, maxNativeZoom: 16,
+  attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors · Zone data: city GIS'
+}).addTo(map);
+map.createPane('placeNames');
+map.getPane('placeNames').style.zIndex = 450;          // above zones (400), below labels/popups
+map.getPane('placeNames').style.pointerEvents = 'none';
+L.tileLayer(ESRI + 'World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 16, maxNativeZoom: 16, pane: 'placeNames', opacity: 0.9
 }).addTo(map);
 
 const state = { city: null, cityLayers: {}, zonesLayer: null, zoneItems: [], activeZone: null, browardBounds: null };
@@ -393,6 +415,7 @@ fetch('Broward-Cities.geojson').then(r => r.json()).then(data => {
   assignColors(Object.values(state.cityLayers), RAINBOW);
   Object.values(state.cityLayers).forEach(l => l.setStyle(overviewStyle(l)));
   state.browardBounds = layer.getBounds();
+  map.invalidateSize();
   map.fitBounds(state.browardBounds, { padding: [10, 10] });
 
   // City dropdown
@@ -434,6 +457,7 @@ function hoverCity(l, on) {
 async function openCity(key) {
   closePanel();
   if (state.zonesLayer) { map.removeLayer(state.zonesLayer); state.zonesLayer = null; }
+  removeZoneLabels();
   state.city = key;
   const cfg = CITIES[key] || {};
   const cityLayer = state.cityLayers[key];
@@ -471,13 +495,58 @@ async function openCity(key) {
       l.on('mouseover', () => { l.setStyle({ fillColor: shade(l._color, -0.3), fillOpacity: 0.85, weight: 2.5 }); });
       l.on('mouseout', () => { if (state.activeZone !== l) l.setStyle(zoneStyle(l)); });
       l.on('click', e => { L.DomEvent.stopPropagation(e); selectZone(f, l, e.latlng); });
-      l.bindTooltip(f.properties.name || 'Zone', { sticky: true, direction: 'top', opacity: 0.95 });
+      // Hover card: which zone, its rule, and the next date.
+      const nx = upcomingDates(f.properties, 1)[0];
+      l.bindTooltip(`<b>${f.properties.name || 'Zone'}</b><div class="s">${f.properties.schedule || ''}</div>
+        <div class="n">${nx ? 'Next pickup: ' + fmtShort(nx) : 'Date not published yet'}</div>
+        <div class="h">Tap for calendar & directions</div>`,
+        { sticky: true, direction: 'top', offset: [0, -8], opacity: 1, className: 'zone-tip' });
     }
   });
   assignColors(state.zoneItems.map(z => z.l), RAINBOW);
   state.zoneItems.forEach(z => z.l.setStyle(zoneStyle(z.l)));
   state.zonesLayer.addTo(map);
+  addZoneLabels();
   buildLegend();
+}
+
+// Date label sitting on each zone (e.g. "Nov 2"), placed inside the zone's biggest piece.
+function addZoneLabels() {
+  removeZoneLabels();
+  state.zoneLabels = state.zoneItems.map(({ f, l }) => {
+    const nx = upcomingDates(f.properties, 1)[0];
+    const text = nx ? nx.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : (f.properties.zone_id || '');
+    const m = L.marker(insidePoint(f.geometry), { interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [0, 0] }) })
+      .bindTooltip(text, { permanent: true, direction: 'center', className: 'zone-label' }).addTo(map);
+    m._zone = l;
+    return m;
+  });
+  fitLabels();
+}
+function removeZoneLabels() { (state.zoneLabels || []).forEach(m => map.removeLayer(m)); state.zoneLabels = []; }
+function fitLabels() {                     // hide labels on zones too small to hold them
+  (state.zoneLabels || []).forEach(m => {
+    const b = m._zone.getBounds(), a = map.latLngToContainerPoint(b.getNorthWest()), c = map.latLngToContainerPoint(b.getSouthEast());
+    const el = m.getTooltip() && m.getTooltip().getElement();
+    if (el) el.classList.toggle('is-hidden', Math.abs(c.x - a.x) < 46 || Math.abs(c.y - a.y) < 20);
+  });
+}
+map.on('zoomend', fitLabels);
+function insidePoint(g) {
+  const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+  const bboxArea = r => { const xs = r.map(p => p[0]), ys = r.map(p => p[1]); return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys)); };
+  const poly = polys.reduce((a, b) => bboxArea(b[0]) > bboxArea(a[0]) ? b : a);
+  const ring = poly[0], xs = ring.map(p => p[0]), ys = ring.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const inside = (x, y, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [a, b] = r[i], [d, e] = r[j]; if ((b > y) !== (e > y) && x < (d - a) * (y - b) / (e - b) + a) c = !c; } return c; };
+  let best = null, bestD = -1;
+  for (let i = 1; i < 14; i++) for (let j = 1; j < 14; j++) {
+    const x = x0 + (x1 - x0) * i / 14, y = y0 + (y1 - y0) * j / 14;
+    if (!inside(x, y, ring) || poly.slice(1).some(h => inside(x, y, h))) continue;
+    let d = Infinity; for (const [px, py] of ring) d = Math.min(d, (px - x) ** 2 + (py - y) ** 2);
+    if (d > bestD) { bestD = d; best = [y, x]; }
+  }
+  return best || [(y0 + y1) / 2, (x0 + x1) / 2];
 }
 
 function zoneStyle(l) { return { fillColor: l._color, fillOpacity: 0.6, color: '#ffffff', weight: 1.2 }; }
@@ -486,6 +555,7 @@ function backToBroward() {
   closePanel(); hideLegend();
   if (state.zonesLayer) { map.removeLayer(state.zonesLayer); state.zonesLayer = null; }
   state.city = null; state.activeZone = null;
+  removeZoneLabels();
   Object.values(state.cityLayers).forEach(l => {
     l.setStyle(overviewStyle(l));
     const el = labelEl(l);
