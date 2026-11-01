@@ -381,15 +381,16 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 // sit in their own layer ABOVE our colored zones so they stay readable.
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
 L.tileLayer(ESRI + 'World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-  maxZoom: 16, maxNativeZoom: 16,
+  maxZoom: 18, maxNativeZoom: 16,
   attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors · Zone data: city GIS'
 }).addTo(map);
 map.createPane('placeNames');
 map.getPane('placeNames').style.zIndex = 450;          // above zones (400), below labels/popups
 map.getPane('placeNames').style.pointerEvents = 'none';
-L.tileLayer(ESRI + 'World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-  maxZoom: 16, maxNativeZoom: 16, pane: 'placeNames', opacity: 0.9
-}).addTo(map);
+// Street & place names: only shown inside a city (on the overview they'd repeat our city labels)
+const placeNames = L.tileLayer(ESRI + 'World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 18, maxNativeZoom: 16, pane: 'placeNames', opacity: 0.9
+});
 
 const state = { city: null, cityLayers: {}, zonesLayer: null, zoneItems: [], activeZone: null, browardBounds: null };
 
@@ -397,6 +398,20 @@ const state = { city: null, cityLayers: {}, zonesLayer: null, zoneItems: [], act
 function overviewStyle(l) {
   return { fillColor: l._color, fillOpacity: 0.55, color: '#ffffff', weight: 1.5 };
 }
+
+// Fit all of Broward. If the map box has no size yet (page still laying out),
+// wait and do it once it does - otherwise Leaflet zooms to street level.
+function fitBroward() {
+  map.invalidateSize();
+  const s = map.getSize();
+  if (!s.x || !s.y) { state.needsFit = true; return; }
+  state.needsFit = false;
+  map.fitBounds(state.browardBounds, { padding: [10, 10] });
+}
+new ResizeObserver(() => {
+  map.invalidateSize();
+  if (state.needsFit && state.browardBounds && !state.city) fitBroward();
+}).observe(document.getElementById('map'));
 
 fetch('Broward-Cities.geojson').then(r => r.json()).then(data => {
   const layer = L.geoJSON(data, {
@@ -415,8 +430,7 @@ fetch('Broward-Cities.geojson').then(r => r.json()).then(data => {
   assignColors(Object.values(state.cityLayers), RAINBOW);
   Object.values(state.cityLayers).forEach(l => l.setStyle(overviewStyle(l)));
   state.browardBounds = layer.getBounds();
-  map.invalidateSize();
-  map.fitBounds(state.browardBounds, { padding: [10, 10] });
+  fitBroward();
 
   // City dropdown
   const sel = $('citySelect');
@@ -458,6 +472,7 @@ async function openCity(key) {
   closePanel();
   if (state.zonesLayer) { map.removeLayer(state.zonesLayer); state.zonesLayer = null; }
   removeZoneLabels();
+  placeNames.addTo(map);
   state.city = key;
   const cfg = CITIES[key] || {};
   const cityLayer = state.cityLayers[key];
@@ -556,6 +571,7 @@ function backToBroward() {
   if (state.zonesLayer) { map.removeLayer(state.zonesLayer); state.zonesLayer = null; }
   state.city = null; state.activeZone = null;
   removeZoneLabels();
+  map.removeLayer(placeNames);
   Object.values(state.cityLayers).forEach(l => {
     l.setStyle(overviewStyle(l));
     const el = labelEl(l);
@@ -565,7 +581,7 @@ function backToBroward() {
       el.classList.toggle('is-hidden', !big);
     }
   });
-  map.fitBounds(state.browardBounds, { padding: [10, 10] });
+  fitBroward();
   $('backBtn').hidden = true;
   document.body.classList.remove('in-city');
   $('citySelect').value = '';
